@@ -33,8 +33,42 @@ export async function fetchStockQuote(symbol: string, token: string): Promise<Fi
   return response.json();
 }
 
+// Fetch company profile for market cap (cached in localStorage to avoid hitting 60 calls/min limit)
+export async function fetchStockProfileCached(symbol: string, token: string): Promise<number | null> {
+  if (typeof window === 'undefined') return null;
+  
+  const cacheKey = `finnhub_profile_${symbol}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      // Cache for 24 hours
+      if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+        return parsed.marketCap;
+      }
+    } catch (e) {
+      // Ignore cache parse errors
+    }
+  }
+
+  try {
+    const url = `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${token}`;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data && data.marketCapitalization) {
+      const marketCapB = data.marketCapitalization / 1000; // Convert millions to billions
+      localStorage.setItem(cacheKey, JSON.stringify({ marketCap: marketCapB, timestamp: Date.now() }));
+      return marketCapB;
+    }
+  } catch (err) {
+    console.error(`Failed to fetch profile for ${symbol}`, err);
+  }
+  return null;
+}
+
 // Normalize a Finnhub quote response to update our Stock structure
-export function normalizeQuote(stock: Stock, quote: FinnhubQuote): Stock {
+export function normalizeQuote(stock: Stock, quote: FinnhubQuote, marketCapB?: number | null): Stock {
   // Check if we got valid quote numbers (Finnhub returns 0 for invalid symbols or sometimes outside market context)
   if (!quote.c || quote.c === 0) {
     return stock; // Fall back to existing stock data
@@ -66,7 +100,8 @@ export function normalizeQuote(stock: Stock, quote: FinnhubQuote): Stock {
     priceChange: nextPriceChange,
     priceChangePercent: nextPriceChangePercent,
     vwap: stock.vwap === 0 ? nextPrice : stock.vwap, // Baseline if uncalculated
-    history: nextHistory
+    history: nextHistory,
+    marketCap: marketCapB ? marketCapB : stock.marketCap
   };
 }
 
@@ -74,7 +109,7 @@ export function normalizeQuote(stock: Stock, quote: FinnhubQuote): Stock {
 export async function fetchAllQuotesStaggered(
   symbols: string[],
   token: string,
-  onProgress: (index: number, total: number, symbol: string, quote: FinnhubQuote) => void
+  onProgress: (index: number, total: number, symbol: string, quote: FinnhubQuote, marketCapB: number | null) => void
 ): Promise<Record<string, FinnhubQuote>> {
   const results: Record<string, FinnhubQuote> = {};
   
@@ -82,15 +117,22 @@ export async function fetchAllQuotesStaggered(
     const symbol = symbols[i];
     try {
       const quote = await fetchStockQuote(symbol, token);
+      
+      // Attempt to fetch profile for market cap (uses cache if available)
+      // If we don't have it cached, it takes an API call. 
+      // We might hit rate limit if 30 quotes + 30 profiles = 60 calls.
+      const marketCapB = await fetchStockProfileCached(symbol, token);
+      
       results[symbol] = quote;
-      onProgress(i + 1, symbols.length, symbol, quote);
+      onProgress(i + 1, symbols.length, symbol, quote, marketCapB);
     } catch (err) {
       console.error(`Failed to fetch quote for ${symbol} via Finnhub:`, err);
     }
 
-    // Wait 1.2 seconds between fetches to respect 60 calls/min rate limits
+    // Wait 1.5 seconds between fetches to respect 60 calls/min rate limits. 
+    // Since profile could take a call if not cached, this slows down but keeps us safer.
     if (i < symbols.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      await new Promise(resolve => setTimeout(resolve, 1500));
     }
   }
 

@@ -185,12 +185,12 @@ export default function Home() {
     
     try {
       // 1. Fetch startup quotes progressively (respects 60 calls/min rate limits)
-      await fetchAllQuotesStaggered(symbols, token, (index, total, symbol, quote) => {
+      await fetchAllQuotesStaggered(symbols, token, (index, total, symbol, quote, marketCapB) => {
         setLoadProgress({ current: index, total, symbol });
         setStocks(prevStocks => {
           return prevStocks.map(stock => {
             if (stock.symbol === symbol) {
-              return normalizeQuote(stock, quote);
+              return normalizeQuote(stock, quote, marketCapB);
             }
             return stock;
           });
