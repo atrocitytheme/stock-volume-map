@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Stock, 
   Exchange, 
@@ -11,11 +11,18 @@ import {
   applyTick, 
   isExchangeOpen 
 } from '../utils/marketDataSim';
+import {
+  normalizeQuote,
+  fetchAllQuotesStaggered,
+  normalizeWSTrade,
+  FinnhubWSMessage,
+  FinnhubWSTradeItem
+} from '../utils/finnhubService';
 import StockTreemap from '../components/StockTreemap';
 import GlobalVolumeMap from '../components/GlobalVolumeMap';
 import LiveTradeFeed from '../components/LiveTradeFeed';
 import StockDetailsModal from '../components/StockDetailsModal';
-import { Play, Pause, AlertTriangle, Zap, Layers, Globe, RefreshCw } from 'lucide-react';
+import { Play, Pause, AlertTriangle, Zap, Layers, Globe, RefreshCw, Settings, Info } from 'lucide-react';
 
 interface IndexTicker {
   name: string;
@@ -30,14 +37,44 @@ export default function Home() {
   const [recentTicks, setRecentTicks] = useState<TradeTick[]>([]);
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   
-  // Dashboard navigation tab
+  // Tab View
   const [activeTab, setActiveTab] = useState<'treemap' | 'geomap'>('treemap');
   
-  // Simulation Controls
+  // Mock Simulation Controls
   const [simulationRunning, setSimulationRunning] = useState(true);
-  const [simSpeedMs, setSimSpeedMs] = useState<number>(300); // Ticks every 300ms by default (Fast update)
+  const [simSpeedMs, setSimSpeedMs] = useState<number>(300);
+  
+  // Market Scenarios & Alerts
   const [marketEventMessage, setMarketEventMessage] = useState<string | null>(null);
   const [eventTimeout, setEventTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Finnhub API Key & WebSocket States (Lazily initialized on client to prevent synchronous setState warnings)
+  const [apiKey, setApiKey] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('finnhub_api_key') || '';
+    }
+    return '';
+  });
+  const [apiInputKey, setApiInputKey] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('finnhub_api_key') || '';
+    }
+    return '';
+  });
+  const [isApiActive, setIsApiActive] = useState<boolean>(false);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  
+  // Progressive REST loader status
+  const [loadingQuotes, setLoadingQuotes] = useState<boolean>(false);
+  const [loadProgress, setLoadProgress] = useState<{ current: number; total: number; symbol: string }>({ current: 0, total: 0, symbol: '' });
+
+  // Web Socket Refs
+  const wsRef = useRef<WebSocket | null>(null);
+  const [wsConnected, setWsConnected] = useState<boolean>(false);
+  
+  // Market Closed detector
+  const [lastTickTime, setLastTickTime] = useState<number | null>(null);
+  const [showMarketClosedAlert, setShowMarketClosedAlert] = useState<boolean>(false);
 
   // Market Indices State
   const [indices, setIndices] = useState<IndexTicker[]>([
@@ -48,46 +85,222 @@ export default function Home() {
     { name: 'NIKKEI 225', value: 39120.50, change: 240.20, changePercent: 0.62 }
   ]);
 
-  // Handle a simulation tick
+  // Handle incoming live trade ticks
+  const handleLiveTrade = useCallback((tradeItem: FinnhubWSTradeItem) => {
+    setLastTickTime(Date.now());
+    setShowMarketClosedAlert(false);
+
+    setStocks(prevStocks => {
+      const stock = prevStocks.find(s => s.symbol === tradeItem.s);
+      if (!stock) return prevStocks;
+
+      // 1. Normalize trade using latest state data
+      const normalizedTick = normalizeWSTrade(tradeItem, stock.price, stock.avgVolume);
+
+      // 2. Append to recent ticks list
+      setRecentTicks(prev => {
+        const next = [normalizedTick, ...prev];
+        if (next.length > 40) next.pop();
+        return next;
+      });
+
+      // 3. Update stock attributes
+      const updatedStocks = applyTick(prevStocks, normalizedTick);
+
+      // 4. Update selected stock inside modal
+      if (selectedStock && selectedStock.symbol === normalizedTick.symbol) {
+        const matching = updatedStocks.find(s => s.symbol === normalizedTick.symbol);
+        if (matching) {
+          // Push update safely in microtask
+          setTimeout(() => setSelectedStock(matching), 0);
+        }
+      }
+
+      // 5. Update exchange volumes
+      setExchanges(prevExchanges => {
+        return prevExchanges.map(ex => {
+          const isMainVolumeDriver = ex.topStockSymbol === normalizedTick.symbol;
+          const tradeValueB = (normalizedTick.price * normalizedTick.size) / 1000000000;
+          const volIncrement = tradeValueB * (isMainVolumeDriver ? 4.0 : 1.2);
+          return {
+            ...ex,
+            volume: Number((ex.volume + volIncrement).toFixed(2))
+          };
+        });
+      });
+
+      return updatedStocks;
+    });
+  }, [selectedStock]);
+
+  // Connect to Finnhub WebSockets
+  const connectWebSocket = useCallback((token: string) => {
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+
+    try {
+      const ws = new WebSocket(`wss://ws.finnhub.io?token=${token}`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('Finnhub WebSocket Connected');
+        setWsConnected(true);
+        setLastTickTime(Date.now());
+
+        // Subscribe to all stock tickers
+        INITIAL_STOCKS.forEach(stock => {
+          ws.send(JSON.stringify({ type: 'subscribe', symbol: stock.symbol }));
+        });
+      };
+
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data) as FinnhubWSMessage;
+        if (message.type === 'trade' && message.data) {
+          message.data.forEach(tradeItem => {
+            handleLiveTrade(tradeItem);
+          });
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.error('WebSocket Error:', err);
+      };
+
+      ws.onclose = () => {
+        console.log('Finnhub WebSocket Closed');
+        setWsConnected(false);
+      };
+    } catch (err) {
+      console.error('Failed to create WebSocket connection:', err);
+    }
+  }, [handleLiveTrade]);
+
+  // Activate Live Market Mode (wrapped in useCallback to satisfy dependency rules)
+  const activateLiveMarket = useCallback(async (token: string) => {
+    setLoadingQuotes(true);
+    setSimulationRunning(false); // Pause mock simulation
+    
+    const symbols = INITIAL_STOCKS.map(s => s.symbol);
+    
+    try {
+      // 1. Fetch startup quotes progressively (respects 60 calls/min rate limits)
+      await fetchAllQuotesStaggered(symbols, token, (index, total, symbol, quote) => {
+        setLoadProgress({ current: index, total, symbol });
+        setStocks(prevStocks => {
+          return prevStocks.map(stock => {
+            if (stock.symbol === symbol) {
+              return normalizeQuote(stock, quote);
+            }
+            return stock;
+          });
+        });
+      });
+
+      setLoadingQuotes(false);
+      setIsApiActive(true);
+
+      // 2. Open live WebSocket connection
+      connectWebSocket(token);
+    } catch (err) {
+      console.error('Staggered loading failed:', err);
+      setLoadingQuotes(false);
+      setMarketEventMessage("❌ API Error: Failed to retrieve market quotes. Verify your API key.");
+      setTimeout(() => setMarketEventMessage(null), 5000);
+    }
+  }, [connectWebSocket]);
+
+  // Load API Key on Startup (placed after activateLiveMarket definition to resolve hoisting errors)
+  useEffect(() => {
+    const savedKey = localStorage.getItem('finnhub_api_key');
+    if (savedKey) {
+      const timer = setTimeout(() => {
+        activateLiveMarket(savedKey);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [activateLiveMarket]);
+
+  // Monitor Live Ticks for Market Closed (no ticks received in live mode)
+  useEffect(() => {
+    if (!isApiActive || !wsConnected) {
+      return;
+    }
+
+    const checkInterval = setInterval(() => {
+      const now = Date.now();
+      if (lastTickTime && now - lastTickTime > 15000) {
+        setShowMarketClosedAlert(true);
+      } else {
+        setShowMarketClosedAlert(false);
+      }
+    }, 5000);
+
+    return () => {
+      clearInterval(checkInterval);
+      setShowMarketClosedAlert(false); // Clean up on unmount or mode changes
+    };
+  }, [isApiActive, wsConnected, lastTickTime]);
+
+  // Save Settings Modal Handler
+  const handleSaveSettings = () => {
+    if (!apiInputKey.trim()) {
+      // Clear key
+      localStorage.removeItem('finnhub_api_key');
+      setApiKey('');
+      setIsApiActive(false);
+      if (wsRef.current) wsRef.current.close();
+      setSimulationRunning(true);
+    } else {
+      // Save and boot
+      const key = apiInputKey.trim();
+      localStorage.setItem('finnhub_api_key', key);
+      setApiKey(key);
+      activateLiveMarket(key);
+    }
+    setShowSettings(false);
+  };
+
+  // Force simulation fallback (when market is closed)
+  const handleMarketClosedFallback = () => {
+    setIsApiActive(false);
+    setShowMarketClosedAlert(false);
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+    setSimulationRunning(true);
+    setMarketEventMessage("🔄 Falling back to Mock Simulation (Market Closed/Inactive).");
+    setTimeout(() => setMarketEventMessage(null), 4000);
+  };
+
+  // Handle a simulation tick (mock data runner)
   const handleSimulationTick = useCallback(() => {
-    // 1. Generate live trade tick
+    if (isApiActive) return; // Skip if live data is running
+
     const tick = generateTick(stocks);
     
-    // 2. Append to recent ticks list (limit to last 40 ticks)
     setRecentTicks(prev => {
       const next = [tick, ...prev];
       if (next.length > 40) next.pop();
       return next;
     });
 
-    // 3. Update stock attributes
     setStocks(prevStocks => {
       const updatedStocks = applyTick(prevStocks, tick);
-      
-      // Update selected stock in real-time if modal is open
       if (selectedStock && selectedStock.symbol === tick.symbol) {
         const matching = updatedStocks.find(s => s.symbol === tick.symbol);
         if (matching) setSelectedStock(matching);
       }
-      
       return updatedStocks;
     });
 
-    // 4. Accumulate volume to exchanges (based on stock trade size)
     setExchanges(prevExchanges => {
       return prevExchanges.map(ex => {
-        // Find if the ticked stock belongs to the sector most traded on this exchange
-        // E.g., Tech for NYSE/NASDAQ/SSE, Energy/Healthcare for FSE/LSE
         const matchingStock = stocks.find(s => s.symbol === tick.symbol);
         if (!matchingStock) return ex;
 
         const isMainVolumeDriver = ex.topStockSymbol === tick.symbol;
-        
-        // Add fractional volume based on trade size
-        // Size represents shares; approximate value = size * price
         const tradeValueB = (tick.price * tick.size) / 1000000000;
-        
-        // Scale factor: add fraction to make volumes look dynamic but stable
         const volIncrement = tradeValueB * (isMainVolumeDriver ? 4.0 : 1.2);
         
         return {
@@ -97,13 +310,10 @@ export default function Home() {
       });
     });
 
-    // 5. Update index metrics based on aggregate stock behavior
     setIndices(prevIndices => {
       return prevIndices.map(ind => {
-        // Technologies heavy NASDAQ, broader S&P, Industrial DOW
         let weightFactor = 0.0001;
         if (ind.name === 'NASDAQ 100') {
-          // Tech weight
           const techAvgChange = stocks
             .filter(s => s.sector === 'Technology')
             .reduce((sum, s) => sum + s.priceChangePercent, 0) / 6;
@@ -112,7 +322,7 @@ export default function Home() {
           const marketAvgChange = stocks.reduce((sum, s) => sum + s.priceChangePercent, 0) / stocks.length;
           weightFactor = marketAvgChange * 0.05;
         } else {
-          weightFactor = (Math.random() - 0.485) * 0.02; // Random walk
+          weightFactor = (Math.random() - 0.485) * 0.02;
         }
 
         const change = ind.value * weightFactor;
@@ -128,24 +338,32 @@ export default function Home() {
         };
       });
     });
-  }, [stocks, selectedStock]);
+  }, [stocks, selectedStock, isApiActive]);
 
   // Set up the simulation tick interval
   useEffect(() => {
-    if (!simulationRunning) return;
+    if (!simulationRunning || isApiActive) return;
 
     const interval = setInterval(handleSimulationTick, simSpeedMs);
     return () => clearInterval(interval);
-  }, [simulationRunning, simSpeedMs, handleSimulationTick]);
+  }, [simulationRunning, simSpeedMs, handleSimulationTick, isApiActive]);
 
-  // Trigger Market Events
+  // Clean up socket on unmount
+  useEffect(() => {
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+    };
+  }, []);
+
+  // Trigger Market Scenarios (Mock only)
   const triggerMarketEvent = (eventType: 'spike' | 'panic') => {
+    if (isApiActive) return; // Scenarios are disabled in live market mode
+
     if (eventTimeout) clearTimeout(eventTimeout);
 
     if (eventType === 'spike') {
       setMarketEventMessage("⚡ EARNINGS SURGE: Mega-Cap Tech volume spikes +300% on record profits!");
       
-      // Update stocks with immediate gains and massive volume increase
       setStocks(prevStocks => {
         return prevStocks.map(stock => {
           if (stock.sector === 'Technology') {
@@ -168,7 +386,6 @@ export default function Home() {
     } else {
       setMarketEventMessage("🚨 PANIC SELL-OFF: Inflation metrics report higher than expected! Yields spike.");
       
-      // Update stocks with immediate deep losses
       setStocks(prevStocks => {
         return prevStocks.map(stock => {
           const lossPercent = 2.0 + Math.random() * 3.0;
@@ -187,15 +404,18 @@ export default function Home() {
       });
     }
 
-    // Auto-remove notification alert after 8 seconds
     const timeout = setTimeout(() => {
       setMarketEventMessage(null);
     }, 8000);
     setEventTimeout(timeout);
   };
 
-  // Reset market data to initial settings
   const handleResetSimulation = () => {
+    if (isApiActive) {
+      // If live, reload quotes
+      activateLiveMarket(apiKey);
+      return;
+    }
     setStocks(INITIAL_STOCKS);
     setExchanges(INITIAL_EXCHANGES);
     setRecentTicks([]);
@@ -206,7 +426,6 @@ export default function Home() {
     setEventTimeout(timeout);
   };
 
-  // Compute market summary cards
   const stocksUp = stocks.filter(s => s.priceChangePercent > 0).length;
   const stocksDown = stocks.filter(s => s.priceChangePercent < 0).length;
   const totalTradedVolShares = stocks.reduce((sum, s) => sum + s.volume, 0);
@@ -238,75 +457,119 @@ export default function Home() {
           </div>
         </div>
 
-        {/* View Selection Navigation Tabs */}
-        <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-          <button
-            onClick={() => setActiveTab('treemap')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: activeTab === 'treemap' ? 'var(--color-accent)' : 'transparent',
-              border: 'none',
-              color: activeTab === 'treemap' ? '#080b11' : 'white',
-              padding: '6px 14px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: 700,
-              transition: 'all var(--transition-fast)'
-            }}
-          >
-            <Layers size={13} />
-            Market Heatmap
-          </button>
-          <button
-            onClick={() => setActiveTab('geomap')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: activeTab === 'geomap' ? 'var(--color-accent)' : 'transparent',
-              border: 'none',
-              color: activeTab === 'geomap' ? '#080b11' : 'white',
-              padding: '6px 14px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: 700,
-              transition: 'all var(--transition-fast)'
-            }}
-          >
-            <Globe size={13} />
-            Global Exchanges
-          </button>
-        </div>
+        {/* Loading progress bar for staggered quotes */}
+        {loadingQuotes && (
+          <div style={{ flex: 1, maxWidth: '280px', margin: '0 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontWeight: 700, color: 'var(--color-volume)' }}>
+              <span>LOADING LIVE API QUOTES...</span>
+              <span>{loadProgress.current}/{loadProgress.total} ({loadProgress.symbol})</span>
+            </div>
+            <div style={{ height: '4px', width: '100%', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+              <div 
+                style={{ 
+                  width: `${(loadProgress.current / loadProgress.total) * 100}%`, 
+                  height: '100%', 
+                  background: 'var(--color-volume)',
+                  transition: 'width 0.2s ease' 
+                }}
+              ></div>
+            </div>
+          </div>
+        )}
 
-        {/* Simulation Controls Panel */}
+        {/* View Selection Navigation Tabs */}
+        {!loadingQuotes && (
+          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+            <button
+              onClick={() => setActiveTab('treemap')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: activeTab === 'treemap' ? 'var(--color-accent)' : 'transparent',
+                border: 'none',
+                color: activeTab === 'treemap' ? '#080b11' : 'white',
+                padding: '6px 14px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 700,
+                transition: 'all var(--transition-fast)'
+              }}
+            >
+              <Layers size={13} />
+              Market Heatmap
+            </button>
+            <button
+              onClick={() => setActiveTab('geomap')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: activeTab === 'geomap' ? 'var(--color-accent)' : 'transparent',
+                border: 'none',
+                color: activeTab === 'geomap' ? '#080b11' : 'white',
+                padding: '6px 14px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 700,
+                transition: 'all var(--transition-fast)'
+              }}
+            >
+              <Globe size={13} />
+              Global Exchanges
+            </button>
+          </div>
+        )}
+
+        {/* Controls Panel */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Active indicator */}
+          {/* Active status indicator */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.03)', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '10px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: simulationRunning ? 'var(--color-gain-bright)' : 'var(--text-muted)', display: 'inline-block', boxShadow: simulationRunning ? '0 0 6px var(--color-gain-bright)' : 'none' }}></span>
-            <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{simulationRunning ? 'LIVE FEED' : 'PAUSED'}</span>
+            <span 
+              style={{ 
+                width: '6px', 
+                height: '6px', 
+                borderRadius: '50%', 
+                backgroundColor: isApiActive 
+                  ? (wsConnected ? 'var(--color-gain-bright)' : 'var(--color-volume)') 
+                  : (simulationRunning ? 'var(--color-accent)' : 'var(--text-muted)'), 
+                display: 'inline-block', 
+                boxShadow: isApiActive && wsConnected 
+                  ? '0 0 6px var(--color-gain-bright)' 
+                  : isApiActive ? '0 0 6px var(--color-volume)' : simulationRunning ? '0 0 6px var(--color-accent)' : 'none' 
+              }}
+            ></span>
+            <span style={{ color: 'white', fontWeight: 700, fontSize: '9px' }}>
+              {isApiActive 
+                ? (wsConnected ? 'LIVE MARKET (WS)' : 'LIVE MARKET (CONNECTING)') 
+                : (simulationRunning ? 'MOCK SIMULATION' : 'SIM PAUSED')}
+            </span>
           </div>
 
-          <button
-            onClick={() => setSimulationRunning(!simulationRunning)}
-            style={{
-              background: simulationRunning ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-              border: `1px solid ${simulationRunning ? 'var(--color-loss-bright)' : 'var(--color-gain-bright)'}`,
-              borderRadius: '6px',
-              color: simulationRunning ? 'var(--color-loss-bright)' : 'var(--color-gain-bright)',
-              padding: '5px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            {simulationRunning ? <Pause size={14} /> : <Play size={14} />}
-          </button>
+          {/* Play/Pause (Simulation only) */}
+          {!isApiActive && (
+            <button
+              onClick={() => setSimulationRunning(!simulationRunning)}
+              style={{
+                background: simulationRunning ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                border: `1px solid ${simulationRunning ? 'var(--color-loss-bright)' : 'var(--color-gain-bright)'}`,
+                borderRadius: '6px',
+                color: simulationRunning ? 'var(--color-loss-bright)' : 'var(--color-gain-bright)',
+                padding: '5px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title={simulationRunning ? 'Pause Simulation' : 'Start Simulation'}
+            >
+              {simulationRunning ? <Pause size={14} /> : <Play size={14} />}
+            </button>
+          )}
 
+          {/* Reset button */}
           <button
             onClick={handleResetSimulation}
             style={{
@@ -320,9 +583,31 @@ export default function Home() {
               alignItems: 'center',
               justifyContent: 'center'
             }}
-            title="Reset Simulation"
+            title={isApiActive ? "Reload Live Quotes" : "Reset Simulation"}
           >
             <RefreshCw size={14} />
+          </button>
+
+          {/* Settings button */}
+          <button
+            onClick={() => {
+              setApiInputKey(apiKey);
+              setShowSettings(true);
+            }}
+            style={{
+              background: isApiActive ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+              border: `1px solid ${isApiActive ? 'var(--color-volume)' : 'var(--border-color)'}`,
+              borderRadius: '6px',
+              color: isApiActive ? 'var(--color-volume)' : 'white',
+              padding: '5px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="API Key Configuration"
+          >
+            <Settings size={14} />
           </button>
         </div>
       </header>
@@ -356,13 +641,52 @@ export default function Home() {
         })}
       </div>
 
-      {/* Main Workspace Split (Treemap/Map on left, Ticker stream on right) */}
+      {/* Main Split Grid */}
       <main style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 280px', gap: '10px', padding: '10px', overflow: 'hidden' }}>
         
         {/* Left Interactive Panel */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden', height: '100%' }}>
           
-          {/* Dynamic Event Alerts Panel */}
+          {/* Market Closed Warning Banner */}
+          {showMarketClosedAlert && (
+            <div 
+              className="glass-panel animate-fade-in" 
+              style={{ 
+                padding: '8px 14px', 
+                background: 'rgba(245, 158, 11, 0.08)', 
+                borderLeft: '4px solid var(--color-volume)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '8px',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: 'white'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Info size={14} style={{ color: 'var(--color-volume)' }} />
+                <span>⚠️ Live Feed Inactive: The US stock market is currently closed or inactive.</span>
+              </div>
+              <button
+                onClick={handleMarketClosedFallback}
+                style={{
+                  background: 'var(--color-volume)',
+                  border: 'none',
+                  color: '#080b11',
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '9px',
+                  fontWeight: 800
+                }}
+              >
+                Resume Mock Simulation
+              </button>
+            </div>
+          )}
+
+          {/* Event notifications alert */}
           {marketEventMessage && (
             <div 
               className="glass-panel animate-fade-in" 
@@ -383,7 +707,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* Active Main View (Heatmap / Globe Map) */}
+          {/* Primary visualization pane */}
           <div style={{ flex: 1, overflow: 'hidden', height: '100%' }}>
             {activeTab === 'treemap' ? (
               <StockTreemap stocks={stocks} onSelectStock={setSelectedStock} />
@@ -392,10 +716,10 @@ export default function Home() {
             )}
           </div>
 
-          {/* Simulation Controls Dashboard Footer */}
+          {/* Footer Controls Dashboard */}
           <div className="glass-panel" style={{ padding: '10px 16px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', background: 'rgba(10,15,28,0.4)' }}>
             
-            {/* Quick Metrics */}
+            {/* Quick Stats */}
             <div style={{ display: 'flex', gap: '24px', fontSize: '11px', color: 'var(--text-secondary)' }}>
               <div>
                 Traded Shares: <strong style={{ color: 'white', fontFamily: 'monospace' }}>{totalTradedVolShares.toLocaleString()}</strong>
@@ -410,122 +734,236 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Special event trigger buttons */}
+            {/* Scenario triggers (Mock mode only) */}
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               
-              {/* Speed controls */}
-              <div style={{ display: 'flex', gap: '4px', alignItems: 'center', borderRight: '1px solid var(--border-color)', paddingRight: '12px' }}>
-                <span style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', marginRight: '4px' }}>Speed:</span>
-                <button
-                  onClick={() => setSimSpeedMs(800)}
-                  style={{
-                    background: simSpeedMs === 800 ? 'var(--color-neutral)' : 'transparent',
-                    border: 'none',
-                    color: simSpeedMs === 800 ? 'white' : 'var(--text-secondary)',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '9px',
-                    fontWeight: 700
-                  }}
-                >
-                  1x
-                </button>
-                <button
-                  onClick={() => setSimSpeedMs(300)}
-                  style={{
-                    background: simSpeedMs === 300 ? 'var(--color-neutral)' : 'transparent',
-                    border: 'none',
-                    color: simSpeedMs === 300 ? 'white' : 'var(--text-secondary)',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '9px',
-                    fontWeight: 700
-                  }}
-                >
-                  3x
-                </button>
-                <button
-                  onClick={() => setSimSpeedMs(100)}
-                  style={{
-                    background: simSpeedMs === 100 ? 'var(--color-neutral)' : 'transparent',
-                    border: 'none',
-                    color: simSpeedMs === 100 ? 'white' : 'var(--text-secondary)',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '9px',
-                    fontWeight: 700
-                  }}
-                >
-                  10x
-                </button>
-              </div>
+              {/* Simulation speed adjustment */}
+              {!isApiActive && (
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center', borderRight: '1px solid var(--border-color)', paddingRight: '12px' }}>
+                  <span style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', marginRight: '4px' }}>Speed:</span>
+                  <button
+                    onClick={() => setSimSpeedMs(800)}
+                    style={{
+                      background: simSpeedMs === 800 ? 'var(--color-neutral)' : 'transparent',
+                      border: 'none',
+                      color: simSpeedMs === 800 ? 'white' : 'var(--text-secondary)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '9px',
+                      fontWeight: 700
+                    }}
+                  >
+                    1x
+                  </button>
+                  <button
+                    onClick={() => setSimSpeedMs(300)}
+                    style={{
+                      background: simSpeedMs === 300 ? 'var(--color-neutral)' : 'transparent',
+                      border: 'none',
+                      color: simSpeedMs === 300 ? 'white' : 'var(--text-secondary)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '9px',
+                      fontWeight: 700
+                    }}
+                  >
+                    3x
+                  </button>
+                  <button
+                    onClick={() => setSimSpeedMs(100)}
+                    style={{
+                      background: simSpeedMs === 100 ? 'var(--color-neutral)' : 'transparent',
+                      border: 'none',
+                      color: simSpeedMs === 100 ? 'white' : 'var(--text-secondary)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '9px',
+                      fontWeight: 700
+                    }}
+                  >
+                    10x
+                  </button>
+                </div>
+              )}
 
-              <span style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Mock Scenario:</span>
-              
-              <button
-                onClick={() => triggerMarketEvent('spike')}
-                style={{
-                  background: 'rgba(59, 130, 246, 0.15)',
-                  border: '1px solid var(--color-accent)',
-                  color: 'white',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  transition: 'background var(--transition-fast)'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.25)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.15)'}
-              >
-                <Zap size={11} style={{ color: 'var(--color-accent)' }} />
-                Tech Surge
-              </button>
-              <button
-                onClick={() => triggerMarketEvent('panic')}
-                style={{
-                  background: 'rgba(239, 68, 68, 0.12)',
-                  border: '1px solid var(--color-loss-bright)',
-                  color: 'white',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  transition: 'background var(--transition-fast)'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.22)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)'}
-              >
-                <AlertTriangle size={11} style={{ color: 'var(--color-loss-bright)' }} />
-                Panic Dump
-              </button>
+              {/* Mock events buttons */}
+              {isApiActive ? (
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                  Mock Scenarios disabled in Live API Mode
+                </span>
+              ) : (
+                <>
+                  <span style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Mock Scenario:</span>
+                  <button
+                    onClick={() => triggerMarketEvent('spike')}
+                    style={{
+                      background: 'rgba(59, 130, 246, 0.15)',
+                      border: '1px solid var(--color-accent)',
+                      color: 'white',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'background var(--transition-fast)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.25)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.15)'}
+                  >
+                    <Zap size={11} style={{ color: 'var(--color-accent)' }} />
+                    Tech Surge
+                  </button>
+                  <button
+                    onClick={() => triggerMarketEvent('panic')}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid var(--color-loss-bright)',
+                      color: 'white',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'background var(--transition-fast)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.22)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)'}
+                  >
+                    <AlertTriangle size={11} style={{ color: 'var(--color-loss-bright)' }} />
+                    Panic Dump
+                  </button>
+                </>
+              )}
             </div>
 
           </div>
         </div>
 
-        {/* Right Execution Tape Sidebar (LiveTradeFeed) */}
+        {/* Right Execution log */}
         <aside style={{ height: '100%', overflow: 'hidden' }}>
           <LiveTradeFeed ticks={recentTicks} />
         </aside>
       </main>
 
-      {/* Stock Details Modal Overlay */}
+      {/* Stock detail Modal Overlay */}
       {selectedStock && (
         <StockDetailsModal 
+          key={selectedStock.symbol} /* Force unmount/remount on selection changes to clear internal state */
           stock={selectedStock} 
           onClose={() => setSelectedStock(null)} 
         />
+      )}
+
+      {/* Settings Modal (Finnhub API Key Config) */}
+      {showSettings && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(5, 7, 12, 0.75)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 1000,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '20px'
+          }}
+        >
+          <div 
+            className="glass-panel animate-fade-in"
+            style={{
+              background: '#0c0f17',
+              width: '100%',
+              maxWidth: '450px',
+              border: '1px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 24px 50px rgba(0,0,0,0.6)',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'white' }}>Settings</h3>
+              <button 
+                onClick={() => setShowSettings(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+            
+            <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}></div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>FINNHUB API KEY</label>
+              <input
+                type="text"
+                value={apiInputKey}
+                onChange={(e) => setApiInputKey(e.target.value)}
+                placeholder="Paste your Finnhub token here..."
+                style={{
+                  background: 'rgba(0,0,0,0.3)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  color: 'white',
+                  fontSize: '12px',
+                  outline: 'none',
+                }}
+              />
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                You can get a free token by signing up at <a href="https://finnhub.io/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline' }}>finnhub.io</a>. Leave blank to disable and restore mock data.
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+              <button
+                onClick={() => setShowSettings(false)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
+                  color: 'white',
+                  padding: '8px 16px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSettings}
+                style={{
+                  background: 'var(--color-accent)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  color: '#080b11',
+                  padding: '8px 16px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Save & Connect
+              </button>
+            </div>
+
+          </div>
+        </div>
       )}
 
     </div>
