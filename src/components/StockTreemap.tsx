@@ -245,7 +245,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
           background: isDataFlashing ? 'var(--bg-gain-faded)' : 'var(--bg-surface-glass)',
           boxShadow: isDataFlashing ? 'inset 0 0 50px rgba(16, 185, 129, 0.15)' : 'none',
           transition: 'all 0.5s ease',
-          minHeight: '400px',
+          minHeight: isMobile ? '600px' : '400px',
           display: stocks.length === 0 ? 'flex' : 'block',
           alignItems: 'center',
           justifyContent: 'center'

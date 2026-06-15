@@ -382,8 +382,8 @@ export default function Home() {
 
 
           {/* Primary visualization pane */}
-          <div className="mobile-main-grid" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden', height: '100%' }}>
-            <div className="mobile-map-container" style={{ flex: 2, overflow: 'hidden' }}>
+          <div className="mobile-main-grid" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', height: '100%' }}>
+            <div className="mobile-map-container" style={{ flex: 2, overflowY: 'visible', minHeight: '400px' }}>
               {activeTab === 'treemap' ? (
                 <StockTreemap stocks={stocks} onSelectStock={setSelectedStock} isDataFlashing={isDataFlashing} />
               ) : (
