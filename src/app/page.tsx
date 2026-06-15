@@ -82,51 +82,7 @@ export default function Home() {
     { name: 'NIKKEI 225', value: 39120.50, change: 240.20, changePercent: 0.62 }
   ]);
 
-  // Handle incoming live trade ticks
-  const handleLiveTrade = useCallback((tradeItem: FinnhubWSTradeItem) => {
 
-    setStocks(prevStocks => {
-      const stock = prevStocks.find(s => s.symbol === tradeItem.s);
-      if (!stock) return prevStocks;
-
-      // 1. Normalize trade using latest state data
-      const normalizedTick = normalizeWSTrade(tradeItem, stock.price, stock.avgVolume);
-
-      // 2. Append to recent ticks list
-      setRecentTicks(prev => {
-        const next = [normalizedTick, ...prev];
-        if (next.length > 40) next.pop();
-        return next;
-      });
-
-      // 3. Update stock attributes
-      const updatedStocks = applyTick(prevStocks, normalizedTick);
-
-      // 4. Update selected stock inside modal
-      if (selectedStock && selectedStock.symbol === normalizedTick.symbol) {
-        const matching = updatedStocks.find(s => s.symbol === normalizedTick.symbol);
-        if (matching) {
-          // Push update safely in microtask
-          setTimeout(() => setSelectedStock(matching), 0);
-        }
-      }
-
-      // 5. Update exchange volumes
-      setExchanges(prevExchanges => {
-        return prevExchanges.map(ex => {
-          const isMainVolumeDriver = ex.topStockSymbol === normalizedTick.symbol;
-          const tradeValueB = (normalizedTick.price * normalizedTick.size) / 1000000000;
-          const volIncrement = tradeValueB * (isMainVolumeDriver ? 4.0 : 1.2);
-          return {
-            ...ex,
-            volume: Number((ex.volume + volIncrement).toFixed(2))
-          };
-        });
-      });
-
-      return updatedStocks;
-    });
-  }, [selectedStock]);
 
   // Poll the backend API proxy for fresh data
   const fetchBackendData = useCallback(async () => {
