@@ -26,6 +26,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
   const [hoveredStock, setHoveredStock] = useState<Stock | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(false);
+  const [viewMode, setViewMode] = useState<'stocks' | 'sectors'>('sectors');
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 768);
@@ -73,7 +74,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
   // Group stocks by sector and build hierarchy using only the filtered stocks
   const sectors = Array.from(new Set(filteredStocks.map(s => s.sector)));
   
-  const hierarchyData: TreemapNode = {
+  const hierarchyData: TreemapNode = viewMode === 'stocks' ? {
     name: 'market',
     children: sectors.map(sector => {
       const sectorStocks = filteredStocks.filter(s => s.sector === sector);
@@ -85,6 +86,42 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
           value: stock.volume,
           stock
         }))
+      };
+    })
+  } : {
+    name: 'market',
+    children: sectors.map(sector => {
+      const sectorStocks = filteredStocks.filter(s => s.sector === sector);
+      const totalVolume = sectorStocks.reduce((sum, s) => sum + s.volume, 0);
+      const totalMarketCap = sectorStocks.reduce((sum, s) => sum + s.marketCap, 0);
+      const weightedChange = totalVolume > 0 
+        ? sectorStocks.reduce((sum, s) => sum + (s.priceChangePercent * s.volume), 0) / totalVolume 
+        : 0;
+
+      return {
+        name: sector,
+        symbol: sector,
+        value: totalVolume,
+        stock: {
+          symbol: sector,
+          name: `${sector} Sector Aggregate`,
+          sector: sector,
+          industry: 'Sector Aggregation',
+          price: 0,
+          openPrice: 0,
+          high: 0,
+          low: 0,
+          lastPrice: 0,
+          priceChange: 0,
+          priceChangePercent: weightedChange,
+          volume: totalVolume,
+          avgVolume: totalVolume,
+          marketCap: totalMarketCap,
+          relativeVolume: 1,
+          lastUpdateDirection: 'neutral',
+          vwap: 0,
+          history: []
+        }
       };
     })
   };
@@ -144,10 +181,43 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
           <span style={{ fontSize: '14px', fontWeight: 600 }}>Market Map View</span>
         </div>
 
+        <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-overlay-light)', padding: '3px', borderRadius: '6px' }}>
+          <button
+            onClick={() => setViewMode('stocks')}
+            style={{
+              padding: '4px 12px',
+              borderRadius: '4px',
+              border: 'none',
+              background: viewMode === 'stocks' ? 'var(--color-accent)' : 'transparent',
+              color: viewMode === 'stocks' ? 'var(--color-bg-deep)' : 'var(--text-secondary)',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            STOCKS
+          </button>
+          <button
+            onClick={() => setViewMode('sectors')}
+            style={{
+              padding: '4px 12px',
+              borderRadius: '4px',
+              border: 'none',
+              background: viewMode === 'sectors' ? 'var(--color-accent)' : 'transparent',
+              color: viewMode === 'sectors' ? 'var(--color-bg-deep)' : 'var(--text-secondary)',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            SECTORS
+          </button>
+        </div>
 
-
-          {/* Search bar */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+        {/* Search bar */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--text-secondary)' }} />
             <input
               type="text"
@@ -195,7 +265,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
         )}
         
         {/* Render Sector Titles & Borders */}
-        {stocks.length > 0 && root.children && root.children.map((sectorNode, idx) => {
+        {viewMode === 'stocks' && stocks.length > 0 && root.children && root.children.map((sectorNode, idx) => {
           const s = sectorNode as unknown as HierarchyRectangularNode<TreemapNode>;
           const w = s.x1 - s.x0;
           const h = s.y1 - s.y0;
@@ -276,7 +346,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
           return (
             <div
               key={`stock-node-${stock.symbol}-${idx}`}
-              onClick={() => onSelectStock?.(stock)}
+              onClick={() => viewMode === 'stocks' && onSelectStock?.(stock)}
               onMouseMove={(e) => handleMouseMove(e, stock)}
               onMouseLeave={() => !isMobile && setHoveredStock(null)}
               className={`treemap-leaf ${flashClass}`}
@@ -289,7 +359,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
                 backgroundColor: color,
                 border: '1px solid rgba(0, 0, 0, 0.4)',
                 borderRadius: '2px',
-                cursor: 'pointer',
+                cursor: viewMode === 'stocks' ? 'pointer' : 'default',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
@@ -328,7 +398,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
                 }}
               >
                 {stock.priceChangePercent > 0 ? '+' : ''}
-                {stock.priceChangePercent}%
+                {Number(stock.priceChangePercent).toFixed(2)}%
               </span>
               
               <span 
@@ -389,7 +459,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
                 }}
               >
                 {hoveredStock.priceChangePercent >= 0 ? '+' : ''}
-                {hoveredStock.priceChangePercent}%
+                {Number(hoveredStock.priceChangePercent).toFixed(2)}%
               </span>
             </div>
             

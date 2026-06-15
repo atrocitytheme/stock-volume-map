@@ -92,10 +92,10 @@ export default function Home() {
 
         setStocks(prevStocks => {
           if (prevStocks.length === 0) {
-            // First load, seed volume with a baseline so it's not empty
+            // First load, instantly calculate live volume indicator based on price change
             return data.stocks.map((s: Stock) => ({
               ...s,
-              volume: s.volume > 0 ? s.volume : (s.marketCap > 0 ? s.marketCap * 15000 : 500000)
+              volume: Math.floor(s.avgVolume * (Math.max(0.05, Math.abs(s.priceChangePercent)) / 100))
             }));
           }
           // Merge updates, preserving volume since the Finnhub REST API doesn't provide real-time volume
@@ -104,7 +104,7 @@ export default function Home() {
             if (oldStock) {
               // Map volume relative to live price change to avoid random simulation accumulation
               const liveVolIndicator = newStock.price !== oldStock.price 
-                ? Math.floor(newStock.avgVolume * (Math.abs(newStock.priceChangePercent) / 100))
+                ? Math.floor(newStock.avgVolume * (Math.max(0.05, Math.abs(newStock.priceChangePercent)) / 100))
                 : oldStock.volume;
               return { ...newStock, volume: liveVolIndicator };
             }
@@ -353,7 +353,7 @@ export default function Home() {
               <span style={{ fontWeight: 800, color: 'var(--text-secondary)' }}>{idx.name}</span>
               <span style={{ fontWeight: 700, fontFamily: 'monospace', color: 'var(--text-primary)' }}>{idx.value.toLocaleString()}</span>
               <span style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: '10px', color: isUp ? 'var(--color-gain-bright)' : 'var(--color-loss-bright)' }}>
-                {isUp ? '▲' : '▼'} {isUp ? '+' : ''}{idx.changePercent}%
+                {isUp ? '▲' : '▼'} {isUp ? '+' : ''}{Number(idx.changePercent).toFixed(2)}%
               </span>
             </div>
           );
