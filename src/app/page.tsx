@@ -84,8 +84,6 @@ export default function Home() {
 
   // Handle incoming live trade ticks
   const handleLiveTrade = useCallback((tradeItem: FinnhubWSTradeItem) => {
-    setLastTickTime(Date.now());
-    setShowMarketClosedAlert(false);
 
     setStocks(prevStocks => {
       const stock = prevStocks.find(s => s.symbol === tradeItem.s);
