@@ -5,7 +5,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { generateVolumeData } from '@/utils/marketVolumeData';
 
 export default function MarketVolumeChart({ isDataFlashing }: { isDataFlashing?: boolean }) {
-  const [timeframe, setTimeframe] = useState<'24h' | '7d' | '30d' | 'ytd'>('ytd');
+  const [timeframe, setTimeframe] = useState<'24h' | '7d' | '30d' | 'ytd'>('24h');
   
   // Generate static aesthetic data based on selected timeframe
   const data = useMemo(() => generateVolumeData(timeframe), [timeframe]);
