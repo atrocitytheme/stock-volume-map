@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Stock, generateOrderBook, OrderBook } from '../utils/marketDataSim';
+import { generate24hVolumeData } from '../utils/marketVolumeData';
 import { X, TrendingUp, BarChart2, DollarSign, Database, Activity } from 'lucide-react';
 
 interface StockDetailsModalProps {
@@ -11,18 +12,19 @@ interface StockDetailsModalProps {
 
 export default function StockDetailsModal({ stock, onClose }: StockDetailsModalProps) {
   const [orderBook, setOrderBook] = useState<OrderBook | null>(() => generateOrderBook(stock));
+  const [volumeData] = useState(() => generate24hVolumeData());
 
-  // Generate order book and refresh periodically
+  // Generate order book tightly synced with the 5s backend API polling updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      setOrderBook(generateOrderBook(stock));
-    }, 1500);
-
-    return () => clearInterval(interval);
+    setOrderBook(generateOrderBook(stock));
   }, [stock]);
 
-  // Compute SVG chart parameters
-  const chartPoints = stock.history;
+  // Compute SVG chart parameters. Ensure at least 2 points so we can draw a line.
+  const chartPoints = stock.history.length > 1 
+    ? stock.history 
+    : stock.history.length === 1 
+      ? [stock.history[0], stock.history[0]] 
+      : [stock.price, stock.price];
   const minPrice = Math.min(...chartPoints, stock.openPrice, stock.low) * 0.999;
   const maxPrice = Math.max(...chartPoints, stock.openPrice, stock.high) * 1.001;
   const priceRange = maxPrice - minPrice || 1;
@@ -54,6 +56,8 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
     return num.toLocaleString();
   };
 
+  const maxVol = Math.max(...volumeData.map(v => v.volume), 1);
+
   // Price progress inside daily range
   const rangePercent = Math.min(Math.max(((stock.price - stock.low) / (stock.high - stock.low || 1)) * 100, 0), 100);
 
@@ -65,7 +69,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
         left: 0,
         width: '100vw',
         height: '100vh',
-        background: 'rgba(5, 7, 12, 0.75)',
+        background: 'var(--bg-overlay-heavy)',
         backdropFilter: 'blur(8px)',
         zIndex: 1000,
         display: 'flex',
@@ -77,23 +81,23 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
       <div 
         className="glass-panel animate-fade-in"
         style={{
-          background: '#0c0f17',
+          background: 'var(--bg-surface)',
           width: '100%',
           maxWidth: '850px',
           maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
-          border: '1px solid rgba(255,255,255,0.12)',
-          boxShadow: '0 24px 50px rgba(0,0,0,0.6)',
+          border: '1px solid var(--border-color)',
+          boxShadow: 'var(--glass-shadow)',
           overflow: 'hidden'
         }}
       >
         {/* Modal Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid var(--border-color)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-            <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'white' }}>{stock.symbol}</h2>
+            <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text-primary)' }}>{stock.symbol}</h2>
             <h3 style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>{stock.name}</h3>
-            <span style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'var(--bg-overlay-light)', padding: '2px 6px', borderRadius: '4px' }}>
               {stock.sector} • {stock.industry}
             </span>
           </div>
@@ -123,7 +127,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Price Box */}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
-              <span style={{ fontSize: '28px', fontWeight: 800, color: 'white', fontFamily: 'monospace' }}>
+              <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                 ${stock.price.toFixed(2)}
               </span>
               <span 
@@ -139,7 +143,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
             </div>
 
             {/* SVG Candlestick / Line Chart */}
-            <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ background: 'var(--bg-overlay-light)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-secondary)' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <TrendingUp size={11} /> 24H Price Trend
@@ -155,9 +159,9 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
                 </defs>
                 
                 {/* Horizontal reference grids */}
-                <line x1="12" y1={padding} x2={svgWidth - 12} y2={padding} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-                <line x1="12" y1={padding + plotHeight / 2} x2={svgWidth - 12} y2={padding + plotHeight / 2} stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="3" />
-                <line x1="12" y1={svgHeight - padding} x2={svgWidth - 12} y2={svgHeight - padding} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                <line x1="12" y1={padding} x2={svgWidth - 12} y2={padding} stroke="var(--grid-line)" strokeWidth="1" />
+                <line x1="12" y1={padding + plotHeight / 2} x2={svgWidth - 12} y2={padding + plotHeight / 2} stroke="var(--grid-line)" strokeWidth="1" strokeDasharray="3" />
+                <line x1="12" y1={svgHeight - padding} x2={svgWidth - 12} y2={svgHeight - padding} stroke="var(--grid-line)" strokeWidth="1" />
                 
                 {/* Reference line for open price */}
                 {stock.openPrice >= minPrice && stock.openPrice <= maxPrice && (
@@ -166,7 +170,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
                     y1={padding + plotHeight - ((stock.openPrice - minPrice) / priceRange) * plotHeight} 
                     x2={svgWidth - 12} 
                     y2={padding + plotHeight - ((stock.openPrice - minPrice) / priceRange) * plotHeight} 
-                    stroke="rgba(255, 255, 255, 0.15)" 
+                    stroke="var(--border-color-hover)" 
                     strokeWidth="0.75" 
                     strokeDasharray="2,4" 
                   />
@@ -176,48 +180,88 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
                 {areaPath && <path d={areaPath} fill={`url(#${chartGradientId})`} />}
                 {linePath && <path d={linePath} fill="none" stroke={chartColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}
               </svg>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-muted)', padding: '0 12px', marginTop: '2px' }}>
+                <span>-24H</span>
+                <span>-12H</span>
+                <span>Now</span>
+              </div>
+            </div>
+
+            {/* 24H Volume Chart */}
+            <div style={{ background: 'var(--bg-overlay-light)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-secondary)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <BarChart2 size={11} /> 24H Volume Profile
+                </span>
+                <span>Est. Shares Traded</span>
+              </div>
+              <svg width="100%" height={60} viewBox={`0 0 ${svgWidth} 60`} style={{ display: 'block' }}>
+                <line x1="12" y1="59" x2={svgWidth - 12} y2="59" stroke="var(--grid-line)" strokeWidth="1" />
+                {volumeData.map((d, i) => {
+                  const barH = (d.volume / maxVol) * 50;
+                  const barW = (svgWidth - 24) / volumeData.length;
+                  const x = 12 + i * barW;
+                  const y = 60 - barH;
+                  return (
+                    <rect 
+                      key={i} 
+                      x={x} 
+                      y={y} 
+                      width={Math.max(1, barW - 1)} 
+                      height={Math.max(1, barH)} 
+                      fill="var(--color-volume)" 
+                      opacity={d.isMarketHours ? 0.8 : 0.25} 
+                    />
+                  );
+                })}
+              </svg>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-muted)', padding: '0 12px', marginTop: '2px' }}>
+                <span>{volumeData[0]?.time}</span>
+                <span>{volumeData[Math.floor(volumeData.length / 2)]?.time}</span>
+                <span>{volumeData[volumeData.length - 1]?.time}</span>
+              </div>
             </div>
 
             {/* General Metrics Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ background: 'var(--bg-overlay-light)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <span style={{ color: 'var(--text-secondary)', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <BarChart2 size={11} /> Volume
                 </span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'white', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                   {formatLargeNumber(stock.volume)}
                 </span>
                 <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
                   Avg: {formatLargeNumber(stock.avgVolume)}
                 </span>
               </div>
-              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ background: 'var(--bg-overlay-light)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <span style={{ color: 'var(--text-secondary)', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <DollarSign size={11} /> VWAP
                 </span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'white', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                   ${stock.vwap.toFixed(2)}
                 </span>
                 <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
                   Volume-weighted price
                 </span>
               </div>
-              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ background: 'var(--bg-overlay-light)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <span style={{ color: 'var(--text-secondary)', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Activity size={11} /> Relative Vol (RVOL)
                 </span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: stock.relativeVolume >= 1.5 ? 'var(--color-volume)' : 'white', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: stock.relativeVolume >= 1.5 ? 'var(--color-volume)' : 'var(--text-primary)', fontFamily: 'monospace' }}>
                   {stock.relativeVolume}x
                 </span>
                 <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
                   Ratio to normal volume
                 </span>
               </div>
-              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ background: 'var(--bg-overlay-light)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <span style={{ color: 'var(--text-secondary)', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Database size={11} /> Market Cap
                 </span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'white', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                   ${stock.marketCap.toFixed(1)}B
                 </span>
                 <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
@@ -227,12 +271,12 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
             </div>
 
             {/* Daily High/Low progress bar */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '11px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-overlay-light)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '11px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                <span>Daily Low: <strong style={{ color: 'white' }}>${stock.low.toFixed(2)}</strong></span>
-                <span>Daily High: <strong style={{ color: 'white' }}>${stock.high.toFixed(2)}</strong></span>
+                <span>Daily Low: <strong style={{ color: 'var(--text-primary)' }}>${stock.low.toFixed(2)}</strong></span>
+                <span>Daily High: <strong style={{ color: 'var(--text-primary)' }}>${stock.high.toFixed(2)}</strong></span>
               </div>
-              <div style={{ position: 'relative', height: '6px', width: '100%', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', marginTop: '2px' }}>
+              <div style={{ position: 'relative', height: '6px', width: '100%', background: 'var(--grid-line)', borderRadius: '3px', marginTop: '2px' }}>
                 <div 
                   style={{ 
                     position: 'absolute', 
@@ -241,7 +285,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
                     width: '12px', 
                     height: '12px', 
                     borderRadius: '50%', 
-                    background: 'white', 
+                    background: 'var(--text-primary)', 
                     border: `2px solid ${chartColor}`,
                     transform: 'translateX(-50%)',
                     boxShadow: '0 1px 4px rgba(0,0,0,0.5)'
@@ -255,7 +299,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
               <Activity size={14} style={{ color: 'var(--color-accent)' }} />
-              <span style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'white' }}>
+              <span style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-primary)' }}>
                 Live Order Depth (L2)
               </span>
             </div>
@@ -286,7 +330,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
                           fontSize: '11px',
                           position: 'relative',
                           background: 'rgba(239, 68, 68, 0.02)',
-                          borderBottom: '1px solid rgba(255,255,255,0.01)',
+                          borderBottom: '1px solid var(--grid-line)',
                           fontFamily: 'monospace'
                         }}
                       >
@@ -294,7 +338,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
                         <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: `${depthPercent}%`, background: 'rgba(239, 68, 68, 0.065)', zIndex: 0, pointerEvents: 'none' }}></div>
                         
                         <span style={{ color: 'var(--color-loss-bright)', fontWeight: 600, zIndex: 1 }}>${ask.price.toFixed(2)}</span>
-                        <span style={{ textAlign: 'right', color: 'white', zIndex: 1 }}>{ask.size.toLocaleString()}</span>
+                        <span style={{ textAlign: 'right', color: 'var(--text-primary)', zIndex: 1 }}>{ask.size.toLocaleString()}</span>
                         <span style={{ textAlign: 'right', color: 'var(--text-secondary)', zIndex: 1 }}>{ask.cumulativeSize.toLocaleString()}</span>
                       </div>
                     );
@@ -302,9 +346,9 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
                 </div>
 
                 {/* SPREAD INDICATOR */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '6px', fontSize: '11px', fontWeight: 600 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--bg-overlay-light)', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '11px', fontWeight: 600 }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Bid/Ask Spread:</span>
-                  <span style={{ color: 'white', fontFamily: 'monospace' }}>
+                  <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                     $0.10 ({(0.10 / stock.price * 100).toFixed(3)}%)
                   </span>
                 </div>
@@ -325,7 +369,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
                           fontSize: '11px',
                           position: 'relative',
                           background: 'rgba(16, 185, 129, 0.02)',
-                          borderBottom: '1px solid rgba(255,255,255,0.01)',
+                          borderBottom: '1px solid var(--grid-line)',
                           fontFamily: 'monospace'
                         }}
                       >
@@ -333,7 +377,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
                         <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: `${depthPercent}%`, background: 'rgba(16, 185, 129, 0.065)', zIndex: 0, pointerEvents: 'none' }}></div>
                         
                         <span style={{ color: 'var(--color-gain-bright)', fontWeight: 600, zIndex: 1 }}>${bid.price.toFixed(2)}</span>
-                        <span style={{ textAlign: 'right', color: 'white', zIndex: 1 }}>{bid.size.toLocaleString()}</span>
+                        <span style={{ textAlign: 'right', color: 'var(--text-primary)', zIndex: 1 }}>{bid.size.toLocaleString()}</span>
                         <span style={{ textAlign: 'right', color: 'var(--text-secondary)', zIndex: 1 }}>{bid.cumulativeSize.toLocaleString()}</span>
                       </div>
                     );

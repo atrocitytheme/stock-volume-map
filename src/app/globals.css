@@ -1,4 +1,59 @@
 :root {
+  /* Light theme design system (Default) */
+  --bg-main: #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #f8fafc;
+  --bg-surface-glass: rgba(255, 255, 255, 0.85);
+  
+  --border-color: rgba(0, 0, 0, 0.1);
+  --border-color-hover: rgba(0, 0, 0, 0.2);
+  
+  --bg-panel: #e2e8f0;
+  
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  
+  --color-gain-bright: #10b981;
+  --color-gain-medium: #059669;
+  --color-gain-dark: #047857;
+  --color-gain-deep: #ecfdf5; /* Light bg for gain */
+  
+  --color-loss-bright: #ef4444;
+  --color-loss-medium: #dc2626;
+  --color-loss-dark: #b91c1c;
+  --color-loss-deep: #fef2f2; /* Light bg for loss */
+  
+  --bg-gain-faded: rgba(16, 185, 129, 0.15);
+  --bg-loss-faded: rgba(239, 68, 68, 0.15);
+  
+  --color-bg-deep: #ffffff;
+  
+  --color-neutral: #cbd5e1;
+  --color-volume: #f59e0b;
+  --color-volume-glow: rgba(245, 158, 11, 0.2);
+  
+  --color-accent: #3b82f6;
+  --color-accent-glow: rgba(59, 130, 246, 0.25);
+  
+  --grid-line: rgba(0, 0, 0, 0.05);
+  --bg-overlay-heavy: rgba(255, 255, 255, 0.8);
+  --bg-overlay-light: rgba(255, 255, 255, 0.5);
+  --panel-shadow: rgba(0,0,0,0.05);
+  
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+  --glass-blur: blur(12px);
+  
+  /* Map specific colors */
+  --map-continent: #cbd5e1;
+  --map-stroke: #f1f5f9;
+  --map-hover: #94a3b8;
+}
+
+[data-theme='dark'] {
   /* Dark theme design system */
   --bg-main: #080b11;
   --bg-surface: #101524;
@@ -7,6 +62,8 @@
   
   --border-color: rgba(255, 255, 255, 0.08);
   --border-color-hover: rgba(255, 255, 255, 0.16);
+  
+  --bg-panel: rgba(0, 0, 0, 0.3);
   
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
@@ -22,18 +79,29 @@
   --color-loss-dark: #b91c1c;
   --color-loss-deep: #7f1d1d;
   
+  --bg-gain-faded: rgba(16, 185, 129, 0.15);
+  --bg-loss-faded: rgba(239, 68, 68, 0.15);
+  
+  --color-bg-deep: #080b11;
+  
   --color-neutral: #334155;
-  --color-volume: #f59e0b; /* Amber */
+  --color-volume: #f59e0b;
   --color-volume-glow: rgba(245, 158, 11, 0.2);
   
-  --color-accent: #3b82f6; /* Electric blue */
+  --color-accent: #3b82f6;
   --color-accent-glow: rgba(59, 130, 246, 0.25);
   
-  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --grid-line: rgba(255, 255, 255, 0.05);
+  --bg-overlay-heavy: rgba(0, 0, 0, 0.4);
+  --bg-overlay-light: rgba(255, 255, 255, 0.02);
+  --panel-shadow: rgba(0,0,0,0.4);
+  
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  --glass-blur: blur(12px);
+  
+  /* Map specific colors */
+  --map-continent: #161c2d;
+  --map-stroke: #080b11;
+  --map-hover: #1e263c;
 }
 
 * {
@@ -154,14 +222,14 @@ body {
 
 /* Interactive SVG World Map Styles */
 .map-country {
-  fill: #161c2d;
-  stroke: #080b11;
+  fill: var(--map-continent);
+  stroke: var(--map-stroke);
   stroke-width: 0.6px;
   transition: fill var(--transition-normal);
 }
 
 .map-country:hover {
-  fill: #1e263c;
+  fill: var(--map-hover);
 }
 
 /* Responsive adjustments */
@@ -169,4 +237,8 @@ body {
   body {
     overflow-y: auto;
   }
+}
+@keyframes indeterminate-slide {
+  0% { left: -50%; }
+  100% { left: 100%; }
 }

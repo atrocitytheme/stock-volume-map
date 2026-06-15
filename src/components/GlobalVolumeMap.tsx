@@ -90,11 +90,11 @@ export default function GlobalVolumeMap({ exchanges }: GlobalVolumeMapProps) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
-              background: 'rgba(0,0,0,0.2)',
+              background: 'var(--bg-overlay-light)',
               border: '1px solid var(--border-color)',
               borderRadius: '8px',
               padding: '6px 12px',
-              color: 'white',
+              color: 'var(--text-primary)',
               fontSize: '12px',
               width: '180px',
               outline: 'none',
@@ -105,7 +105,7 @@ export default function GlobalVolumeMap({ exchanges }: GlobalVolumeMapProps) {
       </div>
 
       {/* SVG Map Canvas */}
-      <div className="glass-panel" style={{ flex: 1, position: 'relative', background: '#070a13', minHeight: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+      <div className="glass-panel" style={{ flex: 1, position: 'relative', background: 'var(--bg-surface-glass)', minHeight: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
         <svg 
           viewBox="0 0 1000 500" 
           width="100%" 
@@ -115,7 +115,7 @@ export default function GlobalVolumeMap({ exchanges }: GlobalVolumeMapProps) {
           {/* Grid lines for sci-fi look */}
           <defs>
             <pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse">
-              <path d="M 25 0 L 0 0 0 25" fill="none" stroke="rgba(255,255,255,0.015)" strokeWidth="0.5" />
+              <path d="M 25 0 L 0 0 0 25" fill="none" stroke="var(--grid-line)" strokeWidth="0.5" />
             </pattern>
           </defs>
           <rect width="1000" height="500" fill="url(#grid)" />
@@ -196,7 +196,7 @@ export default function GlobalVolumeMap({ exchanges }: GlobalVolumeMapProps) {
                     r={radius} 
                     fill="var(--color-neutral)" 
                     opacity="0.75"
-                    stroke="rgba(255, 255, 255, 0.2)"
+                    stroke="var(--border-color)"
                     strokeWidth="1"
                   />
                 )}
@@ -206,7 +206,7 @@ export default function GlobalVolumeMap({ exchanges }: GlobalVolumeMapProps) {
                   cx={exchange.mapX} 
                   cy={exchange.mapY} 
                   r="3.5" 
-                  fill="white"
+                  fill="var(--text-primary)"
                 />
 
                 {/* Exchange name abbreviation text tag */}
@@ -239,18 +239,18 @@ export default function GlobalVolumeMap({ exchanges }: GlobalVolumeMapProps) {
               left: `${hoverPos.x}px`,
               top: `${hoverPos.y}px`,
               pointerEvents: 'none',
-              background: 'rgba(10, 14, 23, 0.95)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-color-hover)',
               borderRadius: '10px',
               padding: '12px 14px',
               zIndex: 100,
               width: '260px',
-              boxShadow: '0 12px 28px rgba(0, 0, 0, 0.55)',
+              boxShadow: 'var(--glass-shadow)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
               <div>
-                <h4 style={{ fontWeight: 800, fontSize: '13px', color: 'white' }}>{hoveredExchange.name}</h4>
+                <h4 style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text-primary)' }}>{hoveredExchange.name}</h4>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px', color: 'var(--text-secondary)', fontSize: '10px' }}>
                   <MapPin size={10} />
                   <span>{hoveredExchange.city}, {hoveredExchange.country}</span>
@@ -263,20 +263,20 @@ export default function GlobalVolumeMap({ exchanges }: GlobalVolumeMapProps) {
                   OPEN
                 </span>
               ) : (
-                <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 6px', background: 'rgba(100, 116, 139, 0.15)', color: 'var(--text-secondary)', border: '1px solid rgba(100, 116, 139, 0.3)', borderRadius: '4px' }}>
+                <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 6px', background: 'var(--bg-overlay-light)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
                   CLOSED
                 </span>
               )}
             </div>
 
-            <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', margin: '6px 0' }}></div>
+            <div style={{ borderBottom: '1px solid var(--grid-line)', margin: '6px 0' }}></div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '11px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Clock size={11} /> Local Time:
                 </span>
-                <span style={{ fontWeight: 600, color: 'white' }}>{getExchangeLocalTime(hoveredExchange)}</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{getExchangeLocalTime(hoveredExchange)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -286,17 +286,17 @@ export default function GlobalVolumeMap({ exchanges }: GlobalVolumeMapProps) {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Hours (Local):</span>
-                <span style={{ color: 'white', fontWeight: 500 }}>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
                   {String(hoveredExchange.openHour).padStart(2, '0')}:{String(hoveredExchange.openMinute).padStart(2, '0')} - {String(hoveredExchange.closeHour).padStart(2, '0')}:{String(hoveredExchange.closeMinute).padStart(2, '0')}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>UTC Offset:</span>
-                <span style={{ color: 'white' }}>{hoveredExchange.utcOffset >= 0 ? '+' : ''}{hoveredExchange.utcOffset} hrs</span>
+                <span style={{ color: 'var(--text-primary)' }}>{hoveredExchange.utcOffset >= 0 ? '+' : ''}{hoveredExchange.utcOffset} hrs</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Top Volume Driver:</span>
-                <span style={{ color: 'white', fontWeight: 600 }}>{hoveredExchange.topStockSymbol}</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{hoveredExchange.topStockSymbol}</span>
               </div>
             </div>
           </div>

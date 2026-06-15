@@ -5,7 +5,7 @@ import {
   Stock, 
   Exchange, 
   TradeTick, 
-  INITIAL_STOCKS, 
+  DEFAULT_SYMBOLS, 
   INITIAL_EXCHANGES, 
   generateTick, 
   applyTick, 
@@ -13,16 +13,16 @@ import {
 } from '../utils/marketDataSim';
 import {
   normalizeQuote,
-  fetchAllQuotesStaggered,
+  fetchInitialStocksStaggered,
   normalizeWSTrade,
   FinnhubWSMessage,
   FinnhubWSTradeItem
 } from '../utils/finnhubService';
-import StockTreemap from '../components/StockTreemap';
-import GlobalVolumeMap from '../components/GlobalVolumeMap';
-import LiveTradeFeed from '../components/LiveTradeFeed';
-import StockDetailsModal from '../components/StockDetailsModal';
-import { Play, Pause, AlertTriangle, Zap, Layers, Globe, RefreshCw, Settings, Info } from 'lucide-react';
+import StockTreemap from '@/components/StockTreemap';
+import GlobalVolumeMap from '@/components/GlobalVolumeMap';
+import StockDetailsModal from '@/components/StockDetailsModal';
+import MarketVolumeChart from '@/components/MarketVolumeChart';
+import { Play, Pause, AlertTriangle, Zap, Layers, Globe, RefreshCw, Info, Sun, Moon } from 'lucide-react';
 
 interface IndexTicker {
   name: string;
@@ -32,49 +32,46 @@ interface IndexTicker {
 }
 
 export default function Home() {
-  const [stocks, setStocks] = useState<Stock[]>(INITIAL_STOCKS);
+  const [stocks, setStocks] = useState<Stock[]>([]);
   const [exchanges, setExchanges] = useState<Exchange[]>(INITIAL_EXCHANGES);
-  const [recentTicks, setRecentTicks] = useState<TradeTick[]>([]);
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   
   // Tab View
   const [activeTab, setActiveTab] = useState<'treemap' | 'geomap'>('treemap');
   
   // Mock Simulation Controls
-  const [simulationRunning, setSimulationRunning] = useState(true);
+  const [simulationRunning, setSimulationRunning] = useState(false);
   const [simSpeedMs, setSimSpeedMs] = useState<number>(300);
   
   // Market Scenarios & Alerts
   const [marketEventMessage, setMarketEventMessage] = useState<string | null>(null);
   const [eventTimeout, setEventTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  // Finnhub API Key & WebSocket States (Lazily initialized on client to prevent synchronous setState warnings)
-  const [apiKey, setApiKey] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('finnhub_api_key') || '';
-    }
-    return '';
-  });
-  const [apiInputKey, setApiInputKey] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('finnhub_api_key') || '';
-    }
-    return '';
-  });
   const [isApiActive, setIsApiActive] = useState<boolean>(false);
-  const [showSettings, setShowSettings] = useState<boolean>(false);
-  
-  // Progressive REST loader status
-  const [loadingQuotes, setLoadingQuotes] = useState<boolean>(false);
-  const [loadProgress, setLoadProgress] = useState<{ current: number; total: number; symbol: string }>({ current: 0, total: 0, symbol: '' });
+  const [loadingQuotes, setLoadingQuotes] = useState<boolean>(true);
 
-  // Web Socket Refs
-  const wsRef = useRef<WebSocket | null>(null);
-  const [wsConnected, setWsConnected] = useState<boolean>(false);
-  
-  // Market Closed detector
-  const [lastTickTime, setLastTickTime] = useState<number | null>(null);
-  const [showMarketClosedAlert, setShowMarketClosedAlert] = useState<boolean>(false);
+  // Version tracking for flash effect
+  const dataVersionRef = useRef<number>(0);
+  const [isDataFlashing, setIsDataFlashing] = useState<boolean>(false);
+
+  // Theme State
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  // Load theme from localStorage on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('app-theme');
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      setTheme(savedTheme);
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('app-theme', newTheme);
+  };
 
   // Market Indices State
   const [indices, setIndices] = useState<IndexTicker[]>([
@@ -133,149 +130,65 @@ export default function Home() {
     });
   }, [selectedStock]);
 
-  // Connect to Finnhub WebSockets
-  const connectWebSocket = useCallback((token: string) => {
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
-
+  // Poll the backend API proxy for fresh data
+  const fetchBackendData = useCallback(async () => {
     try {
-      const ws = new WebSocket(`wss://ws.finnhub.io?token=${token}`);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('Finnhub WebSocket Connected');
-        setWsConnected(true);
-        setLastTickTime(Date.now());
-
-        // Subscribe to all stock tickers
-        INITIAL_STOCKS.forEach(stock => {
-          ws.send(JSON.stringify({ type: 'subscribe', symbol: stock.symbol }));
-        });
-      };
-
-      ws.onmessage = (event) => {
-        const message = JSON.parse(event.data) as FinnhubWSMessage;
-        if (message.type === 'trade' && message.data) {
-          message.data.forEach(tradeItem => {
-            handleLiveTrade(tradeItem);
-          });
+      const response = await fetch('/api/market-data');
+      if (!response.ok) throw new Error('Network response was not ok');
+      const data = await response.json();
+      if (data.stocks && data.stocks.length > 0) {
+        if (data.version !== undefined && data.version > dataVersionRef.current) {
+          dataVersionRef.current = data.version;
+          setIsDataFlashing(true);
+          setTimeout(() => setIsDataFlashing(false), 500);
         }
-      };
 
-      ws.onerror = (err) => {
-        console.error('WebSocket Error:', err);
-      };
-
-      ws.onclose = () => {
-        console.log('Finnhub WebSocket Closed');
-        setWsConnected(false);
-      };
-    } catch (err) {
-      console.error('Failed to create WebSocket connection:', err);
-    }
-  }, [handleLiveTrade]);
-
-  // Activate Live Market Mode (wrapped in useCallback to satisfy dependency rules)
-  const activateLiveMarket = useCallback(async (token: string) => {
-    setLoadingQuotes(true);
-    setSimulationRunning(false); // Pause mock simulation
-    
-    const symbols = INITIAL_STOCKS.map(s => s.symbol);
-    
-    try {
-      // 1. Fetch startup quotes progressively (respects 60 calls/min rate limits)
-      await fetchAllQuotesStaggered(symbols, token, (index, total, symbol, quote, marketCapB) => {
-        setLoadProgress({ current: index, total, symbol });
         setStocks(prevStocks => {
-          return prevStocks.map(stock => {
-            if (stock.symbol === symbol) {
-              return normalizeQuote(stock, quote, marketCapB);
+          if (prevStocks.length === 0) {
+            // First load, seed volume with a baseline so it's not empty
+            return data.stocks.map((s: Stock) => ({
+              ...s,
+              volume: s.volume > 0 ? s.volume : (s.marketCap > 0 ? s.marketCap * 15000 : 500000)
+            }));
+          }
+          // Merge updates, preserving volume since the Finnhub REST API doesn't provide real-time volume
+          const updated = data.stocks.map((newStock: Stock) => {
+            const oldStock = prevStocks.find(s => s.symbol === newStock.symbol);
+            if (oldStock) {
+              // Add a slight random volume increment if the price changed, to simulate trading
+              const volumeIncrement = newStock.price !== oldStock.price 
+                ? Math.floor(newStock.avgVolume * (Math.random() * 0.0005 + 0.0001))
+                : 0;
+              return { ...newStock, volume: oldStock.volume + volumeIncrement };
             }
-            return stock;
+            return newStock;
           });
+
+          return updated;
         });
-      });
-
-      setLoadingQuotes(false);
-      setIsApiActive(true);
-
-      // 2. Open live WebSocket connection
-      connectWebSocket(token);
-    } catch (err) {
-      console.error('Staggered loading failed:', err);
-      setLoadingQuotes(false);
-      setMarketEventMessage("❌ API Error: Failed to retrieve market quotes. Verify your API key.");
-      setTimeout(() => setMarketEventMessage(null), 5000);
-    }
-  }, [connectWebSocket]);
-
-  // Load API Key on Startup (placed after activateLiveMarket definition to resolve hoisting errors)
-  useEffect(() => {
-    const savedKey = localStorage.getItem('finnhub_api_key');
-    if (savedKey) {
-      const timer = setTimeout(() => {
-        activateLiveMarket(savedKey);
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [activateLiveMarket]);
-
-  // Monitor Live Ticks for Market Closed (no ticks received in live mode)
-  useEffect(() => {
-    if (!isApiActive || !wsConnected) {
-      return;
-    }
-
-    const checkInterval = setInterval(() => {
-      const now = Date.now();
-      if (lastTickTime && now - lastTickTime > 15000) {
-        setShowMarketClosedAlert(true);
-      } else {
-        setShowMarketClosedAlert(false);
+        setLoadingQuotes(false);
+        setIsApiActive(true);
+      } else if (data.isFetching) {
+        // Backend is still fetching the initial batch, retry soon
+        setLoadingQuotes(true);
+        setTimeout(fetchBackendData, 2000);
       }
-    }, 5000);
-
-    return () => {
-      clearInterval(checkInterval);
-      setShowMarketClosedAlert(false); // Clean up on unmount or mode changes
-    };
-  }, [isApiActive, wsConnected, lastTickTime]);
-
-  // Save Settings Modal Handler
-  const handleSaveSettings = () => {
-    if (!apiInputKey.trim()) {
-      // Clear key
-      localStorage.removeItem('finnhub_api_key');
-      setApiKey('');
-      setIsApiActive(false);
-      if (wsRef.current) wsRef.current.close();
-      setSimulationRunning(true);
-    } else {
-      // Save and boot
-      const key = apiInputKey.trim();
-      localStorage.setItem('finnhub_api_key', key);
-      setApiKey(key);
-      activateLiveMarket(key);
+    } catch (err) {
+      console.error('Failed to fetch from backend proxy:', err);
     }
-    setShowSettings(false);
-  };
+  }, []);
 
-  // Force simulation fallback (when market is closed)
-  const handleMarketClosedFallback = () => {
-    setIsApiActive(false);
-    setShowMarketClosedAlert(false);
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
-    setSimulationRunning(true);
-    setMarketEventMessage("🔄 Falling back to Mock Simulation (Market Closed/Inactive).");
-    setTimeout(() => setMarketEventMessage(null), 4000);
-  };
+  // Poll backend every 60 seconds (1 minute)
+  useEffect(() => {
+    fetchBackendData();
+    const interval = setInterval(fetchBackendData, 60000);
+    return () => clearInterval(interval);
+  }, [fetchBackendData]);
 
   // Handle a simulation tick (mock data runner)
   const handleSimulationTick = useCallback(() => {
-    if (isApiActive) return; // Skip if live data is running
+    if (stocks.length === 0) return; // Skip if no stocks loaded
+
 
     const tick = generateTick(stocks);
     
@@ -342,16 +255,16 @@ export default function Home() {
 
   // Set up the simulation tick interval
   useEffect(() => {
-    if (!simulationRunning || isApiActive) return;
+    if (!simulationRunning) return;
 
     const interval = setInterval(handleSimulationTick, simSpeedMs);
     return () => clearInterval(interval);
-  }, [simulationRunning, simSpeedMs, handleSimulationTick, isApiActive]);
+  }, [simulationRunning, simSpeedMs, handleSimulationTick]);
 
-  // Clean up socket on unmount
+  // Clean up on unmount
   useEffect(() => {
     return () => {
-      if (wsRef.current) wsRef.current.close();
+      // Any necessary cleanup
     };
   }, []);
 
@@ -412,11 +325,11 @@ export default function Home() {
 
   const handleResetSimulation = () => {
     if (isApiActive) {
-      // If live, reload quotes
-      activateLiveMarket(apiKey);
+      // If live, reload quotes by forcing a manual poll
+      fetchBackendData();
       return;
     }
-    setStocks(INITIAL_STOCKS);
+    setStocks([]); // Reset to empty array instead of mock data
     setExchanges(INITIAL_EXCHANGES);
     setRecentTicks([]);
     setMarketEventMessage("🔄 System Reset: Simulation parameters restored to baseline.");
@@ -444,33 +357,35 @@ export default function Home() {
           alignItems: 'center', 
           justifyContent: 'space-between', 
           padding: '0 20px', 
-          background: 'rgba(16, 21, 36, 0.7)' 
+          background: 'var(--bg-surface-glass)' 
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-volume) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '15px', color: '#080b11', boxShadow: '0 0 12px var(--color-accent-glow)' }}>
+          <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-volume) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '15px', color: 'var(--color-bg-deep)', boxShadow: '0 0 12px var(--color-accent-glow)' }}>
             A
           </div>
           <div>
-            <h1 style={{ fontSize: '15px', fontWeight: 900, color: 'white', letterSpacing: '0.8px' }}>AEROTRADE</h1>
-            <p style={{ fontSize: '9px', color: 'var(--text-secondary)', fontWeight: 500 }}>Live Volume Heatmap Terminal</p>
+            <h1 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+              MARKET <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>|</span> MAPS
+            </h1>
+            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>REAL-TIME ORDER FLOW & VOLUME ANALYSIS</p>
           </div>
         </div>
 
-        {/* Loading progress bar for staggered quotes */}
+        {/* Loading indicator for backend proxy */}
         {loadingQuotes && (
           <div style={{ flex: 1, maxWidth: '280px', margin: '0 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontWeight: 700, color: 'var(--color-volume)' }}>
-              <span>LOADING LIVE API QUOTES...</span>
-              <span>{loadProgress.current}/{loadProgress.total} ({loadProgress.symbol})</span>
+              <span>SYNCING SECURE MARKET PROXY...</span>
             </div>
-            <div style={{ height: '4px', width: '100%', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+            <div style={{ height: '4px', width: '100%', background: 'var(--border-color)', borderRadius: '2px', overflow: 'hidden', position: 'relative' }}>
               <div 
                 style={{ 
-                  width: `${(loadProgress.current / loadProgress.total) * 100}%`, 
+                  width: '50%', 
                   height: '100%', 
                   background: 'var(--color-volume)',
-                  transition: 'width 0.2s ease' 
+                  position: 'absolute',
+                  animation: 'indeterminate-slide 1.5s infinite ease-in-out'
                 }}
               ></div>
             </div>
@@ -479,7 +394,7 @@ export default function Home() {
 
         {/* View Selection Navigation Tabs */}
         {!loadingQuotes && (
-          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', background: 'var(--bg-panel)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
             <button
               onClick={() => setActiveTab('treemap')}
               style={{
@@ -488,7 +403,7 @@ export default function Home() {
                 gap: '6px',
                 background: activeTab === 'treemap' ? 'var(--color-accent)' : 'transparent',
                 border: 'none',
-                color: activeTab === 'treemap' ? '#080b11' : 'white',
+                color: activeTab === 'treemap' ? 'var(--color-bg-deep)' : 'var(--text-primary)',
                 padding: '6px 14px',
                 borderRadius: '6px',
                 cursor: 'pointer',
@@ -508,7 +423,7 @@ export default function Home() {
                 gap: '6px',
                 background: activeTab === 'geomap' ? 'var(--color-accent)' : 'transparent',
                 border: 'none',
-                color: activeTab === 'geomap' ? '#080b11' : 'white',
+                color: activeTab === 'geomap' ? 'var(--color-bg-deep)' : 'var(--text-primary)',
                 padding: '6px 14px',
                 borderRadius: '6px',
                 cursor: 'pointer',
@@ -526,34 +441,54 @@ export default function Home() {
         {/* Controls Panel */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* Active status indicator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.03)', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-panel)', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '10px' }}>
             <span 
               style={{ 
                 width: '6px', 
                 height: '6px', 
                 borderRadius: '50%', 
                 backgroundColor: isApiActive 
-                  ? (wsConnected ? 'var(--color-gain-bright)' : 'var(--color-volume)') 
+                  ? 'var(--color-gain-bright)' 
                   : (simulationRunning ? 'var(--color-accent)' : 'var(--text-muted)'), 
                 display: 'inline-block', 
-                boxShadow: isApiActive && wsConnected 
+                boxShadow: isApiActive 
                   ? '0 0 6px var(--color-gain-bright)' 
-                  : isApiActive ? '0 0 6px var(--color-volume)' : simulationRunning ? '0 0 6px var(--color-accent)' : 'none' 
+                  : simulationRunning ? '0 0 6px var(--color-accent)' : 'none' 
               }}
             ></span>
-            <span style={{ color: 'white', fontWeight: 700, fontSize: '9px' }}>
+            <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '9px' }}>
               {isApiActive 
-                ? (wsConnected ? 'LIVE MARKET (WS)' : 'LIVE MARKET (CONNECTING)') 
+                ? 'LIVE MARKET (PROXY)' 
                 : (simulationRunning ? 'MOCK SIMULATION' : 'SIM PAUSED')}
             </span>
           </div>
+
+          {/* Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            style={{
+              background: 'var(--bg-panel)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '6px',
+              color: 'var(--text-primary)',
+              padding: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: 'var(--glass-shadow)'
+            }}
+            title={theme === 'light' ? "Switch to Dark Mode" : "Switch to Light Mode"}
+          >
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
 
           {/* Play/Pause (Simulation only) */}
           {!isApiActive && (
             <button
               onClick={() => setSimulationRunning(!simulationRunning)}
               style={{
-                background: simulationRunning ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                background: simulationRunning ? 'var(--bg-loss-faded)' : 'var(--bg-gain-faded)',
                 border: `1px solid ${simulationRunning ? 'var(--color-loss-bright)' : 'var(--color-gain-bright)'}`,
                 borderRadius: '6px',
                 color: simulationRunning ? 'var(--color-loss-bright)' : 'var(--color-gain-bright)',
@@ -587,28 +522,6 @@ export default function Home() {
           >
             <RefreshCw size={14} />
           </button>
-
-          {/* Settings button */}
-          <button
-            onClick={() => {
-              setApiInputKey(apiKey);
-              setShowSettings(true);
-            }}
-            style={{
-              background: isApiActive ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
-              border: `1px solid ${isApiActive ? 'var(--color-volume)' : 'var(--border-color)'}`,
-              borderRadius: '6px',
-              color: isApiActive ? 'var(--color-volume)' : 'white',
-              padding: '5px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            title="API Key Configuration"
-          >
-            <Settings size={14} />
-          </button>
         </div>
       </header>
 
@@ -623,7 +536,7 @@ export default function Home() {
           gap: '24px', 
           padding: '0 16px', 
           overflowX: 'auto',
-          background: 'rgba(5, 7, 12, 0.4)',
+          background: 'var(--bg-surface-glass)',
           borderStyle: 'dashed'
         }}
       >
@@ -632,7 +545,7 @@ export default function Home() {
           return (
             <div key={`index-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', whiteSpace: 'nowrap' }}>
               <span style={{ fontWeight: 800, color: 'var(--text-secondary)' }}>{idx.name}</span>
-              <span style={{ fontWeight: 700, fontFamily: 'monospace', color: 'white' }}>{idx.value.toLocaleString()}</span>
+              <span style={{ fontWeight: 700, fontFamily: 'monospace', color: 'var(--text-primary)' }}>{idx.value.toLocaleString()}</span>
               <span style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: '10px', color: isUp ? 'var(--color-gain-bright)' : 'var(--color-loss-bright)' }}>
                 {isUp ? '▲' : '▼'} {isUp ? '+' : ''}{idx.changePercent}%
               </span>
@@ -642,49 +555,21 @@ export default function Home() {
       </div>
 
       {/* Main Split Grid */}
-      <main style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 280px', gap: '10px', padding: '10px', overflow: 'hidden' }}>
+      <main 
+        style={{ 
+          flex: 1, 
+          display: 'grid', 
+          gridTemplateColumns: 'minmax(0, 1fr)', 
+          gap: '10px', 
+          padding: '10px', 
+          overflow: 'hidden'
+        }}
+      >
         
         {/* Left Interactive Panel */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden', height: '100%' }}>
           
-          {/* Market Closed Warning Banner */}
-          {showMarketClosedAlert && (
-            <div 
-              className="glass-panel animate-fade-in" 
-              style={{ 
-                padding: '8px 14px', 
-                background: 'rgba(245, 158, 11, 0.08)', 
-                borderLeft: '4px solid var(--color-volume)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '8px',
-                fontSize: '11px',
-                fontWeight: 600,
-                color: 'white'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Info size={14} style={{ color: 'var(--color-volume)' }} />
-                <span>⚠️ Live Feed Inactive: The US stock market is currently closed or inactive.</span>
-              </div>
-              <button
-                onClick={handleMarketClosedFallback}
-                style={{
-                  background: 'var(--color-volume)',
-                  border: 'none',
-                  color: '#080b11',
-                  padding: '3px 8px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '9px',
-                  fontWeight: 800
-                }}
-              >
-                Resume Mock Simulation
-              </button>
-            </div>
-          )}
+
 
           {/* Event notifications alert */}
           {marketEventMessage && (
@@ -692,14 +577,14 @@ export default function Home() {
               className="glass-panel animate-fade-in" 
               style={{ 
                 padding: '8px 14px', 
-                background: marketEventMessage.startsWith('⚡') ? 'rgba(59, 130, 246, 0.08)' : 'rgba(239, 68, 68, 0.08)', 
+                background: marketEventMessage.startsWith('⚡') ? 'var(--bg-gain-faded)' : 'var(--bg-loss-faded)', 
                 borderLeft: `4px solid ${marketEventMessage.startsWith('⚡') ? 'var(--color-accent)' : 'var(--color-loss-bright)'}`,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 fontSize: '11px',
                 fontWeight: 600,
-                color: 'white'
+                color: 'var(--text-primary)'
               }}
             >
               {marketEventMessage.startsWith('⚡') ? <Zap size={14} style={{ color: 'var(--color-accent)' }} /> : <AlertTriangle size={14} style={{ color: 'var(--color-loss-bright)' }} />}
@@ -708,21 +593,26 @@ export default function Home() {
           )}
 
           {/* Primary visualization pane */}
-          <div style={{ flex: 1, overflow: 'hidden', height: '100%' }}>
-            {activeTab === 'treemap' ? (
-              <StockTreemap stocks={stocks} onSelectStock={setSelectedStock} />
-            ) : (
-              <GlobalVolumeMap exchanges={exchanges} />
-            )}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden', height: '100%' }}>
+            <div style={{ flex: 2, overflow: 'hidden' }}>
+              {activeTab === 'treemap' ? (
+                <StockTreemap stocks={stocks} onSelectStock={setSelectedStock} isDataFlashing={isDataFlashing} />
+              ) : (
+                <GlobalVolumeMap exchanges={exchanges} />
+              )}
+            </div>
+            <div style={{ flex: 1, overflow: 'hidden', minHeight: '150px' }}>
+              <MarketVolumeChart isDataFlashing={isDataFlashing} />
+            </div>
           </div>
 
           {/* Footer Controls Dashboard */}
-          <div className="glass-panel" style={{ padding: '10px 16px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', background: 'rgba(10,15,28,0.4)' }}>
+          <div className="glass-panel" style={{ padding: '10px 16px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', background: 'var(--bg-surface-glass)' }}>
             
             {/* Quick Stats */}
             <div style={{ display: 'flex', gap: '24px', fontSize: '11px', color: 'var(--text-secondary)' }}>
               <div>
-                Traded Shares: <strong style={{ color: 'white', fontFamily: 'monospace' }}>{totalTradedVolShares.toLocaleString()}</strong>
+                Traded Shares: <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{totalTradedVolShares.toLocaleString()}</strong>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 Breadth: 
@@ -730,7 +620,7 @@ export default function Home() {
                 <span style={{ color: 'var(--color-loss-bright)', fontWeight: 700 }}>{stocksDown} ▼</span>
               </div>
               <div>
-                Active Markets: <strong style={{ color: 'white' }}>{activeExchangesCount} / {exchanges.length}</strong>
+                Active Markets: <strong style={{ color: 'var(--text-primary)' }}>{activeExchangesCount} / {exchanges.length}</strong>
               </div>
             </div>
 
@@ -848,10 +738,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Right Execution log */}
-        <aside style={{ height: '100%', overflow: 'hidden' }}>
-          <LiveTradeFeed ticks={recentTicks} />
-        </aside>
       </main>
 
       {/* Stock detail Modal Overlay */}
@@ -861,109 +747,6 @@ export default function Home() {
           stock={selectedStock} 
           onClose={() => setSelectedStock(null)} 
         />
-      )}
-
-      {/* Settings Modal (Finnhub API Key Config) */}
-      {showSettings && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            background: 'rgba(5, 7, 12, 0.75)',
-            backdropFilter: 'blur(8px)',
-            zIndex: 1000,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '20px'
-          }}
-        >
-          <div 
-            className="glass-panel animate-fade-in"
-            style={{
-              background: '#0c0f17',
-              width: '100%',
-              maxWidth: '450px',
-              border: '1px solid rgba(255,255,255,0.12)',
-              boxShadow: '0 24px 50px rgba(0,0,0,0.6)',
-              padding: '20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'white' }}>Settings</h3>
-              <button 
-                onClick={() => setShowSettings(false)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-              >
-                Close
-              </button>
-            </div>
-            
-            <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}></div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>FINNHUB API KEY</label>
-              <input
-                type="text"
-                value={apiInputKey}
-                onChange={(e) => setApiInputKey(e.target.value)}
-                placeholder="Paste your Finnhub token here..."
-                style={{
-                  background: 'rgba(0,0,0,0.3)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '8px',
-                  padding: '10px 12px',
-                  color: 'white',
-                  fontSize: '12px',
-                  outline: 'none',
-                }}
-              />
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                You can get a free token by signing up at <a href="https://finnhub.io/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', textDecoration: 'underline' }}>finnhub.io</a>. Leave blank to disable and restore mock data.
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-              <button
-                onClick={() => setShowSettings(false)}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '6px',
-                  color: 'white',
-                  padding: '8px 16px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveSettings}
-                style={{
-                  background: 'var(--color-accent)',
-                  border: 'none',
-                  borderRadius: '6px',
-                  color: '#080b11',
-                  padding: '8px 16px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                Save & Connect
-              </button>
-            </div>
-
-          </div>
-        </div>
       )}
 
     </div>

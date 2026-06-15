@@ -7,7 +7,8 @@ import { Search, Layers } from 'lucide-react';
 
 interface StockTreemapProps {
   stocks: Stock[];
-  onSelectStock: (stock: Stock) => void;
+  onSelectStock?: (stock: Stock) => void;
+  isDataFlashing?: boolean;
 }
 
 interface TreemapNode {
@@ -18,10 +19,9 @@ interface TreemapNode {
   stock?: Stock;
 }
 
-export default function StockTreemap({ stocks, onSelectStock }: StockTreemapProps) {
+export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: StockTreemapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
-  const [sizeMetric, setSizeMetric] = useState<'volume' | 'marketCap'>('volume');
   const [searchQuery, setSearchQuery] = useState('');
   const [hoveredStock, setHoveredStock] = useState<Stock | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -54,19 +54,27 @@ export default function StockTreemap({ stocks, onSelectStock }: StockTreemapProp
     return 'var(--color-loss-bright)';
   };
 
-  // Group stocks by sector and build hierarchy
-  const sectors = Array.from(new Set(stocks.map(s => s.sector)));
+  // Filter stocks to Top 5 Volume and Top 5 Market Cap
+  const topVolume = [...stocks].sort((a, b) => b.volume - a.volume).slice(0, 5);
+  const topMarketCap = [...stocks].sort((a, b) => b.marketCap - a.marketCap).slice(0, 5);
+  
+  // Combine and remove duplicates by symbol
+  const topStockSymbols = new Set([...topVolume, ...topMarketCap].map(s => s.symbol));
+  const filteredStocks = stocks.filter(s => topStockSymbols.has(s.symbol));
+
+  // Group stocks by sector and build hierarchy using only the filtered stocks
+  const sectors = Array.from(new Set(filteredStocks.map(s => s.sector)));
   
   const hierarchyData: TreemapNode = {
     name: 'market',
     children: sectors.map(sector => {
-      const sectorStocks = stocks.filter(s => s.sector === sector);
+      const sectorStocks = filteredStocks.filter(s => s.sector === sector);
       return {
         name: sector,
         children: sectorStocks.map(stock => ({
           name: stock.symbol,
           symbol: stock.symbol,
-          value: sizeMetric === 'volume' ? stock.volume : stock.marketCap * 10000000, // Scale market cap to align values
+          value: stock.volume,
           stock
         }))
       };
@@ -127,42 +135,7 @@ export default function StockTreemap({ stocks, onSelectStock }: StockTreemapProp
           <span style={{ fontSize: '14px', fontWeight: 600 }}>Market Map View</span>
         </div>
 
-        {/* View toggles */}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-            <button
-              onClick={() => setSizeMetric('volume')}
-              style={{
-                background: sizeMetric === 'volume' ? 'var(--color-neutral)' : 'transparent',
-                border: 'none',
-                color: 'white',
-                padding: '6px 12px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: 500,
-                transition: 'background var(--transition-fast)'
-              }}
-            >
-              Trading Volume
-            </button>
-            <button
-              onClick={() => setSizeMetric('marketCap')}
-              style={{
-                background: sizeMetric === 'marketCap' ? 'var(--color-neutral)' : 'transparent',
-                border: 'none',
-                color: 'white',
-                padding: '6px 12px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: 500,
-                transition: 'background var(--transition-fast)'
-              }}
-            >
-              Market Cap
-            </button>
-          </div>
+
 
           {/* Search bar */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -173,19 +146,18 @@ export default function StockTreemap({ stocks, onSelectStock }: StockTreemapProp
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
-                background: 'rgba(0,0,0,0.2)',
+                background: 'var(--bg-overlay-light)',
                 border: '1px solid var(--border-color)',
                 borderRadius: '8px',
-                padding: '6px 10px 6px 30px',
-                color: 'white',
-                fontSize: '12px',
+                padding: '6px 12px',
+                color: 'var(--text-primary)',
+                fontSize: '11px',
                 width: '180px',
                 outline: 'none',
                 transition: 'border-color var(--transition-fast)'
               }}
             />
           </div>
-        </div>
       </div>
 
       {/* Main Treemap Visualization Container */}
@@ -196,12 +168,25 @@ export default function StockTreemap({ stocks, onSelectStock }: StockTreemapProp
           flex: 1, 
           position: 'relative', 
           overflow: 'hidden', 
-          background: 'rgba(5, 7, 12, 0.5)',
-          minHeight: '400px'
+          background: isDataFlashing ? 'var(--bg-gain-faded)' : 'var(--bg-surface-glass)',
+          boxShadow: isDataFlashing ? 'inset 0 0 50px rgba(16, 185, 129, 0.15)' : 'none',
+          transition: 'all 0.5s ease',
+          minHeight: '400px',
+          display: stocks.length === 0 ? 'flex' : 'block',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}
       >
+        {stocks.length === 0 && (
+          <div style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>
+            <Layers size={32} style={{ color: 'var(--grid-line)', margin: '0 auto 12px auto' }} />
+            <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Market Data Syncing...</p>
+            <p style={{ fontSize: '11px' }}>Establishing secure connection to market proxy...</p>
+          </div>
+        )}
+        
         {/* Render Sector Titles & Borders */}
-        {root.children && root.children.map((sectorNode, idx) => {
+        {stocks.length > 0 && root.children && root.children.map((sectorNode, idx) => {
           const s = sectorNode as unknown as HierarchyRectangularNode<TreemapNode>;
           const w = s.x1 - s.x0;
           const h = s.y1 - s.y0;
@@ -218,7 +203,7 @@ export default function StockTreemap({ stocks, onSelectStock }: StockTreemapProp
                 width: `${w}px`,
                 height: `${h}px`,
                 pointerEvents: 'none',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
+                border: '1px solid var(--grid-line)',
                 boxSizing: 'border-box'
               }}
             >
@@ -229,7 +214,7 @@ export default function StockTreemap({ stocks, onSelectStock }: StockTreemapProp
                   left: '4px',
                   fontSize: '9px',
                   fontWeight: 800,
-                  color: 'rgba(255, 255, 255, 0.35)',
+                  color: 'var(--text-muted)',
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
                   whiteSpace: 'nowrap',
@@ -247,7 +232,10 @@ export default function StockTreemap({ stocks, onSelectStock }: StockTreemapProp
         {/* Render Leaf Stocks */}
         {leaves.map((d3Leaf, idx) => {
           const leaf = d3Leaf as unknown as HierarchyRectangularNode<TreemapNode>;
-          const stock = leaf.data.stock as Stock;
+          const stock = leaf.data.stock as Stock | undefined;
+          
+          if (!stock) return null;
+          
           const w = leaf.x1 - leaf.x0;
           const h = leaf.y1 - leaf.y0;
 
@@ -268,7 +256,7 @@ export default function StockTreemap({ stocks, onSelectStock }: StockTreemapProp
           }
 
           // Relative Volume class indicator for amber highlight
-          const isHighVolume = sizeMetric === 'volume' && stock.relativeVolume >= 1.5;
+          const isHighVolume = stock.relativeVolume >= 1.5;
 
           // Pricing tick indicator glow class
           const flashClass = 
@@ -313,7 +301,7 @@ export default function StockTreemap({ stocks, onSelectStock }: StockTreemapProp
                   style={{ 
                     fontSize: w > 50 ? '13px' : '10px', 
                     fontWeight: 700, 
-                    color: 'white',
+                    color: '#ffffff',
                     textShadow: '0 1px 3px rgba(0,0,0,0.6)' 
                   }}
                 >
@@ -343,9 +331,7 @@ export default function StockTreemap({ stocks, onSelectStock }: StockTreemapProp
                     marginTop: '1px'
                   }}
                 >
-                  {sizeMetric === 'volume' 
-                    ? `Vol: ${formatLargeNumber(stock.volume)}` 
-                    : `$${stock.marketCap}B`}
+                  {`Vol: ${formatLargeNumber(stock.volume)}`}
                 </span>
               )}
             </div>
@@ -361,20 +347,20 @@ export default function StockTreemap({ stocks, onSelectStock }: StockTreemapProp
               left: `${tooltipPos.x}px`,
               top: `${tooltipPos.y}px`,
               pointerEvents: 'none',
-              background: 'rgba(10, 14, 23, 0.95)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
+              background: 'var(--bg-surface-glass)',
+              border: '1px solid var(--border-color-hover)',
               borderRadius: '8px',
               padding: '12px',
               zIndex: 100,
               width: '250px',
               fontSize: '12px',
-              boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+              boxShadow: 'var(--glass-shadow)',
               animation: 'fade-in-up 0.15s ease-out'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
               <div>
-                <span style={{ fontWeight: 800, fontSize: '13px', color: 'white' }}>{hoveredStock.symbol}</span>
+                <span style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text-primary)' }}>{hoveredStock.symbol}</span>
                 <span style={{ color: 'var(--text-secondary)', marginLeft: '6px', fontSize: '10px' }}>{hoveredStock.name}</span>
               </div>
               <span 
@@ -391,24 +377,24 @@ export default function StockTreemap({ stocks, onSelectStock }: StockTreemapProp
             <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', margin: '6px 0' }}></div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Price:</span>
-                <span style={{ fontWeight: 600, color: 'white' }}>${hoveredStock.price.toFixed(2)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Trading Volume:</span>
-                <span style={{ fontWeight: 600, color: 'white' }}>{formatLargeNumber(hoveredStock.volume)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>30D Avg Vol:</span>
-                <span style={{ fontWeight: 500 }}>{formatLargeNumber(hoveredStock.avgVolume)}</span>
-              </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                  <span>Price:</span>
+                  <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>${hoveredStock.price.toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                  <span>Est. Volume:</span>
+                  <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{hoveredStock.volume.toLocaleString()} shares</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                  <span>Market Cap:</span>
+                  <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>${hoveredStock.marketCap.toFixed(1)}B</span>
+                </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Relative Vol (RVOL):</span>
                 <span 
                   style={{ 
                     fontWeight: 700, 
-                    color: hoveredStock.relativeVolume >= 1.5 ? 'var(--color-volume)' : 'white',
+                    color: hoveredStock.relativeVolume >= 1.5 ? 'var(--color-volume)' : 'var(--text-primary)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px'
