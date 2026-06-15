@@ -78,7 +78,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
         children: sectorStocks.map(stock => ({
           name: stock.symbol,
           symbol: stock.symbol,
-          value: stock.volume,
+          value: Math.pow(Math.max(1, stock.volume), 0.4),
           stock
         }))
       };
@@ -96,7 +96,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
       return {
         name: sector,
         symbol: sector,
-        value: totalVolume,
+        value: Math.pow(Math.max(1, totalVolume), 0.4),
         stock: {
           symbol: sector,
           name: `${sector} Sector Aggregate`,
