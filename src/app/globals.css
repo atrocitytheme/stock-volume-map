@@ -247,36 +247,98 @@ body {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .map-tooltip {
+  .map-tooltip,
+  .recharts-tooltip-wrapper {
     position: fixed !important;
-    top: auto !important;
+    top: 0 !important;
     bottom: 0 !important;
     left: 0 !important;
+    right: 0 !important;
     width: 100vw !important;
-    border-radius: 24px 24px 0 0 !important;
-    border-top: 1px solid var(--border-color) !important;
-    border-left: none !important;
-    border-right: none !important;
-    border-bottom: none !important;
-    padding: 24px 20px 40px 20px !important;
+    height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    padding: 24px !important;
     background: var(--bg-surface-glass) !important;
-    backdrop-filter: blur(16px) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
-    box-shadow: 0 -8px 32px var(--glass-shadow) !important;
+    backdrop-filter: blur(24px) !important;
+    -webkit-backdrop-filter: blur(24px) !important;
+    box-shadow: none !important;
     z-index: 9999 !important;
-    pointer-events: auto !important;
-    max-height: 85vh !important;
+    max-height: none !important;
     overflow-y: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transform: none !important; /* Overrides Recharts translate */
+  }
+
+  .map-tooltip {
+    pointer-events: auto !important;
+  }
+
+  .recharts-tooltip-wrapper {
+    pointer-events: none !important; /* Allows taps to pass through and dismiss */
+  }
+
+  .recharts-default-tooltip {
+    border-radius: 12px !important;
+    padding: 20px !important;
+    font-size: 14px !important;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
+  }
+
+  /* Full screen dialog close text */
+  .mobile-tooltip-close-hint {
+    display: block !important;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 24px;
+    text-align: center;
+    font-weight: 600;
   }
 
   .mobile-tooltip-handle {
-    display: block !important;
-    width: 40px;
-    height: 4px;
-    background: var(--text-muted);
-    border-radius: 2px;
-    margin: 0 auto 16px auto;
+    display: none !important;
   }
+
+  /* Mobile Treemap Grid Override */
+  .treemap-container {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    overflow-y: auto !important;
+    align-content: flex-start !important;
+    padding: 8px !important;
+    gap: 6px !important;
+  }
+  
+  .treemap-sector {
+    display: none !important;
+  }
+  
+  .treemap-leaf {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    width: auto !important;
+    height: auto !important;
+    flex: 1 1 80px !important;
+    min-height: 60px !important;
+    display: flex !important;
+    margin: 0 !important;
+    opacity: 1 !important; /* Force visibility even if size was small */
+  }
+
+  .treemap-symbol, .treemap-percent {
+    display: block !important;
+    font-size: 13px !important;
+  }
+  
+  .treemap-percent {
+    font-size: 11px !important;
+    margin-top: 4px !important;
+  }
+
   html, body {
     overflow-y: auto !important;
     overflow-x: hidden;
@@ -317,6 +379,18 @@ body {
     display: flex !important;
     flex-direction: column !important;
     overflow: visible !important;
+    height: auto !important;
+  }
+  
+  .mobile-page-root {
+    height: auto !important;
+    min-height: 100vh;
+    overflow: visible !important;
+  }
+  
+  .mobile-wrap {
+    flex-wrap: wrap !important;
+    height: auto !important;
   }
   
   .mobile-chart-container {

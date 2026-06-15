@@ -163,7 +163,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
       {/* Main Treemap Visualization Container */}
       <div 
         ref={containerRef} 
-        className="glass-panel" 
+        className="glass-panel treemap-container" 
         style={{ 
           flex: 1, 
           position: 'relative', 
@@ -196,6 +196,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
           return (
             <div
               key={`sector-${s.data.name}-${idx}`}
+              className="treemap-sector"
               style={{
                 position: 'absolute',
                 left: `${s.x0}px`,
@@ -239,9 +240,6 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
           const w = leaf.x1 - leaf.x0;
           const h = leaf.y1 - leaf.y0;
 
-          // If block is too small to render, just draw an empty placeholder or skip
-          if (w <= 5 || h <= 5) return null;
-
           const color = getStockColorClass(stock.priceChangePercent);
           
           // Match search queries
@@ -272,7 +270,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
               onClick={() => onSelectStock?.(stock)}
               onMouseMove={(e) => handleMouseMove(e, stock)}
               onMouseLeave={() => setHoveredStock(null)}
-              className={`${flashClass}`}
+              className={`treemap-leaf ${flashClass}`}
               style={{
                 position: 'absolute',
                 left: `${leaf.x0}px`,
@@ -296,86 +294,81 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
               }}
             >
               {/* Render Symbol & Stats depending on size of block */}
-              {w > 32 && h > 28 && (
-                <span 
-                  style={{ 
-                    fontSize: w > 50 ? '13px' : '10px', 
-                    fontWeight: 700, 
-                    color: '#ffffff',
-                    textShadow: '0 1px 3px rgba(0,0,0,0.6)' 
-                  }}
-                >
-                  {stock.symbol}
-                </span>
-              )}
-              {w > 48 && h > 42 && (
-                <span 
-                  style={{ 
-                    fontSize: '10px', 
-                    color: 'rgba(255, 255, 255, 0.95)',
-                    fontWeight: 500,
-                    textShadow: '0 1px 2px rgba(0,0,0,0.6)',
-                    marginTop: '2px'
-                  }}
-                >
-                  {stock.priceChangePercent > 0 ? '+' : ''}
-                  {stock.priceChangePercent}%
-                </span>
-              )}
-              {w > 72 && h > 58 && (
-                <span 
-                  style={{ 
-                    fontSize: '9px', 
-                    color: 'rgba(255, 255, 255, 0.65)',
-                    textShadow: '0 1px 2px rgba(0,0,0,0.6)',
-                    marginTop: '1px'
-                  }}
-                >
-                  {`Vol: ${formatLargeNumber(stock.volume)}`}
-                </span>
-              )}
-              {w > 80 && h > 70 && (
-                <span 
-                  style={{ 
-                    fontSize: '8.5px', 
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    textShadow: '0 1px 2px rgba(0,0,0,0.6)',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    padding: '2px 4px',
-                    borderRadius: '4px',
-                    marginTop: '4px',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}
-                >
-                  {stock.sector}
-                </span>
-              )}
+              <span 
+                className="treemap-symbol"
+                style={{ 
+                  display: w > 32 && h > 28 ? 'block' : 'none',
+                  fontSize: w > 50 ? '13px' : '10px', 
+                  fontWeight: 700, 
+                  color: '#ffffff',
+                  textShadow: '0 1px 3px rgba(0,0,0,0.6)' 
+                }}
+              >
+                {stock.symbol}
+              </span>
+              
+              <span 
+                className="treemap-percent"
+                style={{ 
+                  display: w > 48 && h > 42 ? 'block' : 'none',
+                  fontSize: '10px', 
+                  color: 'rgba(255, 255, 255, 0.95)',
+                  fontWeight: 500,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.6)',
+                  marginTop: '2px'
+                }}
+              >
+                {stock.priceChangePercent > 0 ? '+' : ''}
+                {stock.priceChangePercent}%
+              </span>
+              
+              <span 
+                className="treemap-vol"
+                style={{ 
+                  display: w > 72 && h > 58 ? 'block' : 'none',
+                  fontSize: '9px', 
+                  color: 'rgba(255, 255, 255, 0.65)',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.6)',
+                  marginTop: '1px'
+                }}
+              >
+                {`Vol: ${formatLargeNumber(stock.volume)}`}
+              </span>
+              
+              <span 
+                className="treemap-sector-badge"
+                style={{ 
+                  display: w > 80 && h > 70 ? 'block' : 'none',
+                  fontSize: '8.5px', 
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.6)',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  padding: '2px 4px',
+                  borderRadius: '4px',
+                  marginTop: '4px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}
+              >
+                {stock.sector}
+              </span>
             </div>
           );
         })}
 
-        {/* Hover Tooltip Render */}
+        {/* Hover Tooltip Render / Mobile Full Screen Dialog */}
         {hoveredStock && (
           <div
-            className="glass-panel"
+            className="map-tooltip animate-fade-in"
             style={{
-              position: 'absolute',
               left: `${tooltipPos.x}px`,
               top: `${tooltipPos.y}px`,
-              pointerEvents: 'none',
-              background: 'var(--bg-surface-glass)',
-              border: '1px solid var(--border-color-hover)',
-              borderRadius: '8px',
-              padding: '12px',
-              zIndex: 100,
-              width: '250px',
-              fontSize: '12px',
-              boxShadow: 'var(--glass-shadow)',
-              animation: 'fade-in-up 0.15s ease-out'
             }}
+            onClick={() => setHoveredStock(null)}
+            onTouchStart={() => {}}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <div style={{ width: '100%' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
               <div>
                 <span style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text-primary)' }}>{hoveredStock.symbol}</span>
                 <span style={{ color: 'var(--text-secondary)', marginLeft: '6px', fontSize: '10px' }}>{hoveredStock.name}</span>
@@ -431,6 +424,11 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
                 <span style={{ color: 'var(--text-secondary)' }}>Market Cap:</span>
                 <span style={{ fontWeight: 600 }}>${hoveredStock.marketCap.toFixed(1)}B</span>
               </div>
+            </div>
+            </div>
+            
+            <div className="mobile-tooltip-close-hint" style={{ display: 'none' }}>
+              Tap anywhere to close
             </div>
           </div>
         )}

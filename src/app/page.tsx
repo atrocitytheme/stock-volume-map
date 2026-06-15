@@ -188,7 +188,7 @@ export default function Home() {
   const activeExchangesCount = exchanges.filter(ex => isExchangeOpen(ex)).length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <div className="mobile-page-root" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       
       {/* Top Header Navigation */}
       <header 
@@ -326,7 +326,7 @@ export default function Home() {
 
       {/* Market Indices Ticker Belt */}
       <div 
-        className="glass-panel"
+        className="glass-panel mobile-wrap"
         style={{ 
           height: '36px', 
           margin: '8px 10px 0 10px', 

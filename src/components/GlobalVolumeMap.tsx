@@ -273,8 +273,8 @@ export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapPr
               left: `${hoverPos.x}px`,
               top: `${hoverPos.y}px`,
             }}
-            onClick={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
+            onClick={() => setHoveredExchange(null)}
+            onTouchStart={() => {}} // Allows touch to register as click
           >
             {/* Small drag handle only visible on mobile */}
             <div className="mobile-tooltip-handle" style={{ display: 'none' }}></div>
@@ -358,6 +358,10 @@ export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapPr
                 <span style={{ color: 'var(--text-secondary)' }}>Top Volume Driver:</span>
                 <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{hoveredExchange.topStockSymbol}</span>
               </div>
+            </div>
+            
+            <div className="mobile-tooltip-close-hint" style={{ display: 'none' }}>
+              Tap anywhere to close
             </div>
           </div>
         )}
