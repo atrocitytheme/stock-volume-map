@@ -210,9 +210,9 @@ export default function Home() {
           </div>
           <div>
             <h1 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
-              MARKET <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>|</span> MAPS
+              STOCK VOLUME <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>|</span> MAP
             </h1>
-            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600 }}>REAL-TIME ORDER FLOW & VOLUME ANALYSIS</p>
+            <h2 style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, margin: 0 }}>REAL-TIME ORDER FLOW & VOLUME TODAY</h2>
           </div>
         </div>
 

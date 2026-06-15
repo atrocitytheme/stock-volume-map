@@ -15,8 +15,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AeroTrade | Stock Trading Volume Interactive Map",
-  description: "Real-time interactive stock trading volume map dashboard featuring live sector treemaps and a global exchange heatmap.",
+  title: "AeroTrade | Live Stock Volume Map & Today's Volume Trends",
+  description: "Track stock volume today with AeroTrade's interactive volume map. Monitor real-time market activity, sector block trades, and global exchange volumes.",
+  keywords: ["stock volume", "volume map", "volume today", "stock market heatmap", "trading volume analysis", "global exchanges", "real-time stock volume"],
+  authors: [{ name: "AeroTrade" }],
+  openGraph: {
+    title: "AeroTrade | Live Stock Volume Map",
+    description: "Track stock volume today with AeroTrade's live volume map. Monitor real-time market activity and sector block trades.",
+    type: "website",
+    siteName: "AeroTrade",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AeroTrade | Live Stock Volume Map",
+    description: "Track stock volume today with AeroTrade's live volume map.",
+  },
+  robots: "index, follow",
 };
 
 export default function RootLayout({
