@@ -141,11 +141,23 @@ export function buildInitialStock(symbol: string, quote: FinnhubQuote, profile: 
   // Set default fallback values for avgVolume if not available through another API
   const defaultAvgVolume = 5000000;
 
+  // Pre-mapped sectors for our tracked ETFs to clarify market focus
+  const sectorMap: Record<string, string> = {
+    'QQQ': 'Technology Focus',
+    'SPY': 'Broad Market',
+    'VOO': 'S&P 500 Core',
+    'IWM': 'Small Cap Focus',
+    'SMH': 'Semiconductors',
+    'XBI': 'Biotech Focus'
+  };
+
+  const finalSector = sectorMap[symbol] || (profile ? profile.sector : 'Other');
+
   return {
     symbol,
     name: profile ? profile.name : symbol,
-    sector: profile ? profile.sector : 'Other',
-    industry: 'Unknown', // Finnhub profile2 gives finnhubIndustry which maps to our sector conceptually
+    sector: finalSector,
+    industry: 'ETF', // They are all ETFs in our subset
     price: currentPrice,
     openPrice: openPrice,
     high: quote.h || currentPrice,

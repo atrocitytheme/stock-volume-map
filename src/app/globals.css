@@ -233,11 +233,68 @@ body {
 }
 
 /* Responsive adjustments */
-@media (max-width: 1024px) {
-  body {
-    overflow-y: auto;
+@media (max-width: 768px) {
+  html, body {
+    overflow-y: auto !important;
+    overflow-x: hidden;
+  }
+  
+  .mobile-col {
+    flex-direction: column !important;
+    height: auto !important;
+  }
+  
+  .mobile-header {
+    height: auto !important;
+    padding: 12px !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+  }
+  
+  .mobile-controls {
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+  
+  .mobile-tabs {
+    width: 100%;
+  }
+  
+  .mobile-tabs button {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .mobile-hide {
+    display: none !important;
+  }
+  
+  .mobile-main-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: visible !important;
+  }
+  
+  .mobile-chart-container {
+    min-height: 400px !important;
+    height: 400px !important;
+    flex: none !important;
+  }
+  
+  .mobile-map-container {
+    min-height: 350px !important;
+    height: 350px !important;
+    flex: none !important;
+  }
+  
+  .mobile-stats-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 12px !important;
   }
 }
+
 @keyframes indeterminate-slide {
   0% { left: -50%; }
   100% { left: 100%; }

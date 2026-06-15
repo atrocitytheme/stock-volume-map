@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Exchange, isExchangeOpen } from '../utils/marketDataSim';
-import { Globe, MapPin, Clock, TrendingUp } from 'lucide-react';
+import { Exchange, Stock, isExchangeOpen } from '../utils/marketDataSim';
+import { Globe, MapPin, Clock, TrendingUp, Activity, Tag } from 'lucide-react';
 
 interface GlobalVolumeMapProps {
   exchanges: Exchange[];
+  stocks: Stock[];
 }
 
-export default function GlobalVolumeMap({ exchanges }: GlobalVolumeMapProps) {
+export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapProps) {
   const [hoveredExchange, setHoveredExchange] = useState<Exchange | null>(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
   const [systemTime, setSystemTime] = useState<Date>(new Date());
@@ -40,12 +41,27 @@ export default function GlobalVolumeMap({ exchanges }: GlobalVolumeMapProps) {
   };
 
   const handleMouseMove = (e: React.MouseEvent, exchange: Exchange) => {
-    const rect = e.currentTarget.parentElement?.getBoundingClientRect();
-    if (!rect) return;
+    // Tooltip approximate dimensions
+    const tooltipWidth = 260;
+    const tooltipHeight = 180;
     
-    // Position tooltip relative to SVG canvas
-    const x = exchange.mapX + 15;
-    const y = exchange.mapY + 15;
+    // SVG logical dimensions
+    const svgWidth = 1000;
+    const svgHeight = 500;
+    
+    // Position tooltip relative to SVG canvas (default bottom-right)
+    let x = exchange.mapX + 15;
+    let y = exchange.mapY + 15;
+    
+    // Prevent overflow on the right
+    if (x + tooltipWidth > svgWidth) {
+      x = exchange.mapX - tooltipWidth - 15;
+    }
+    
+    // Prevent overflow on the bottom
+    if (y + tooltipHeight > svgHeight) {
+      y = exchange.mapY - tooltipHeight - 15;
+    }
     
     setHoverPos({ x, y });
     setHoveredExchange(exchange);
@@ -280,10 +296,39 @@ export default function GlobalVolumeMap({ exchanges }: GlobalVolumeMapProps) {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <TrendingUp size={11} /> Trading Volume:
+                  <TrendingUp size={11} /> Market Volume:
                 </span>
                 <span style={{ fontWeight: 700, color: 'var(--color-volume)' }}>{formatVolume(getExchangeVolume(hoveredExchange))}</span>
               </div>
+              
+              <div style={{ borderBottom: '1px solid var(--grid-line)', margin: '4px 0' }}></div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
+                <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Activity size={11} /> Top Driver:
+                </span>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{hoveredExchange.topStockSymbol}</span>
+              </div>
+              {(() => {
+                const driverStock = stocks.find(s => s.symbol === hoveredExchange.topStockSymbol);
+                if (!driverStock) return null;
+                return (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
+                      <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Tag size={11} /> Focus Sector:
+                      </span>
+                      <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{driverStock.sector}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
+                      <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <TrendingUp size={11} /> Trade Volume:
+                      </span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{new Intl.NumberFormat('en-US').format(driverStock.volume)}</span>
+                    </div>
+                  </>
+                );
+              })()}
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Hours (Local):</span>
                 <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>

@@ -334,6 +334,23 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
                   {`Vol: ${formatLargeNumber(stock.volume)}`}
                 </span>
               )}
+              {w > 80 && h > 70 && (
+                <span 
+                  style={{ 
+                    fontSize: '8.5px', 
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.6)',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    padding: '2px 4px',
+                    borderRadius: '4px',
+                    marginTop: '4px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}
+                >
+                  {stock.sector}
+                </span>
+              )}
             </div>
           );
         })}
@@ -380,6 +397,10 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
                   <span>Price:</span>
                   <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>${hoveredStock.price.toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                  <span>Sector Focus:</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-accent)' }}>{hoveredStock.sector}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
                   <span>Est. Volume:</span>

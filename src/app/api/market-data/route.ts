@@ -20,12 +20,12 @@ export async function GET() {
 
   const now = Date.now();
   
-  // Trigger update every 60 seconds
-  if (now - lastFetchTime > 60000 && !isFetching) {
+  // Trigger update every 5 seconds
+  if (now - lastFetchTime > 5000 && !isFetching) {
     isFetching = true;
     try {
-      if (!cachedStocks) {
-        // INITIALIZATION: Fetch all 28 symbols at once so the board starts full.
+      if (!cachedStocks || cachedStocks.length === 0) {
+        // INITIALIZATION: Fetch all symbols at once so the board starts full.
         const stocks = await fetchInitialStocksStaggered(
           DEFAULT_SYMBOLS,
           token,
@@ -38,13 +38,20 @@ export async function GET() {
           dataVersion++;
         }
       } else {
-        // PER-MINUTE UPDATE: Fetch all symbols since there are only 6 now.
-        // 6 calls every 60s uses only 10% of the 60 calls/min limit!
+        // 5s UPDATE: Fetch a rotating batch of 4 symbols.
+        // 4 calls every 5s = 48 calls/min, which safely stays under the 60 calls/min limit!
+        const batchSize = 4;
+        const symbolsToFetch = [];
+        for (let i = 0; i < batchSize; i++) {
+          symbolsToFetch.push(DEFAULT_SYMBOLS[(updateCursor + i) % DEFAULT_SYMBOLS.length]);
+        }
+        updateCursor = (updateCursor + batchSize) % DEFAULT_SYMBOLS.length;
+
         const newStocksBatch = await fetchInitialStocksStaggered(
-          DEFAULT_SYMBOLS,
+          symbolsToFetch,
           token,
           () => {},
-          150 // small delay
+          50 // small delay
         );
 
         // Merge newly fetched batch into existing cache

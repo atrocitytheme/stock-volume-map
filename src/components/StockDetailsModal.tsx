@@ -121,7 +121,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
         </div>
 
         {/* Modal Body Container */}
-        <div style={{ padding: '20px', overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div className="mobile-main-grid" style={{ padding: '20px', overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           
           {/* Left Column: Chart & Stats */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

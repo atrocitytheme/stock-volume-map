@@ -90,7 +90,7 @@ export const INITIAL_EXCHANGES: Exchange[] = [
     closeMinute: 0,
     volume: 125.4,
     baseVolume: 120.0,
-    topStockSymbol: 'NVDA'
+    topStockSymbol: 'SPY'
   },
   {
     id: 'lse',
@@ -108,7 +108,7 @@ export const INITIAL_EXCHANGES: Exchange[] = [
     closeMinute: 30,
     volume: 18.2,
     baseVolume: 17.5,
-    topStockSymbol: 'AAPL'
+    topStockSymbol: 'VOO'
   },
   {
     id: 'tse',
@@ -126,7 +126,7 @@ export const INITIAL_EXCHANGES: Exchange[] = [
     closeMinute: 0,
     volume: 32.5,
     baseVolume: 31.0,
-    topStockSymbol: 'MSFT'
+    topStockSymbol: 'QQQ'
   },
   {
     id: 'sse',
@@ -144,7 +144,7 @@ export const INITIAL_EXCHANGES: Exchange[] = [
     closeMinute: 0,
     volume: 45.1,
     baseVolume: 43.0,
-    topStockSymbol: 'NVDA'
+    topStockSymbol: 'SMH'
   },
   {
     id: 'hkex',
@@ -162,7 +162,7 @@ export const INITIAL_EXCHANGES: Exchange[] = [
     closeMinute: 0,
     volume: 22.8,
     baseVolume: 21.0,
-    topStockSymbol: 'META'
+    topStockSymbol: 'XBI'
   },
   {
     id: 'fse',
@@ -180,7 +180,7 @@ export const INITIAL_EXCHANGES: Exchange[] = [
     closeMinute: 0,
     volume: 12.1,
     baseVolume: 11.5,
-    topStockSymbol: 'LLY'
+    topStockSymbol: 'IWM'
   },
   {
     id: 'nse',
@@ -198,7 +198,7 @@ export const INITIAL_EXCHANGES: Exchange[] = [
     closeMinute: 30,
     volume: 15.6,
     baseVolume: 14.8,
-    topStockSymbol: 'TSLA'
+    topStockSymbol: 'SPY'
   },
   {
     id: 'asx',
@@ -216,7 +216,7 @@ export const INITIAL_EXCHANGES: Exchange[] = [
     closeMinute: 0,
     volume: 6.4,
     baseVolume: 6.0,
-    topStockSymbol: 'XOM'
+    topStockSymbol: 'QQQ'
   }
 ];
 
