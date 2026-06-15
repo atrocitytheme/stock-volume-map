@@ -131,34 +131,37 @@ export default function Home() {
 
         // Update indices based on live data
         setIndices(prevIndices => {
-          const techAvgChange = data.stocks
-            .filter((s: Stock) => s.sector === 'Technology')
-            .reduce((sum: number, s: Stock) => sum + s.priceChangePercent, 0) / Math.max(1, data.stocks.filter((s: Stock) => s.sector === 'Technology').length);
-            
-          const marketAvgChange = data.stocks.reduce((sum: number, s: Stock) => sum + s.priceChangePercent, 0) / Math.max(1, data.stocks.length);
-
           return prevIndices.map(ind => {
-            const baseValue = ind.value - ind.change;
-            let targetPercent = ind.changePercent;
+            let trackingStock;
+            let multiplier = 1;
 
-            if (ind.name === 'NASDAQ 100') {
-              targetPercent = techAvgChange;
-            } else if (ind.name === 'S&P 500') {
-              targetPercent = marketAvgChange;
-            } else {
-              // Add minor jitter for other indices to keep them looking live
-              targetPercent = ind.changePercent + (Math.random() - 0.5) * 0.05;
+            if (ind.name === 'S&P 500') {
+              trackingStock = data.stocks.find((s: Stock) => s.symbol === 'SPY');
+              multiplier = 10; // SPY is ~1/10th of S&P 500
+            } else if (ind.name === 'NASDAQ 100') {
+              trackingStock = data.stocks.find((s: Stock) => s.symbol === 'QQQ');
+              multiplier = 40; // QQQ is ~1/40th of Nasdaq 100
+            } else if (ind.name === 'DOW JONES') {
+              trackingStock = data.stocks.find((s: Stock) => s.symbol === 'DIA');
+              multiplier = 100; // DIA is ~1/100th of Dow Jones
+            } else if (ind.name === 'FTSE 100') {
+              trackingStock = data.stocks.find((s: Stock) => s.symbol === 'EWU');
+              multiplier = 240; // EWU is ~1/240th of FTSE
+            } else if (ind.name === 'NIKKEI 225') {
+              trackingStock = data.stocks.find((s: Stock) => s.symbol === 'EWJ');
+              multiplier = 650; // EWJ is ~1/650th of Nikkei
             }
 
-            const nextChange = baseValue * (targetPercent / 100);
-            const nextValue = baseValue + nextChange;
+            if (trackingStock) {
+              return {
+                ...ind,
+                value: Number((trackingStock.price * multiplier).toFixed(2)),
+                change: Number((trackingStock.priceChange * multiplier).toFixed(2)),
+                changePercent: trackingStock.priceChangePercent
+              };
+            }
 
-            return {
-              ...ind,
-              value: Number(nextValue.toFixed(2)),
-              change: Number(nextChange.toFixed(2)),
-              changePercent: Number(targetPercent.toFixed(2))
-            };
+            return ind; // Fallback if data is still fetching
           });
         });
 
