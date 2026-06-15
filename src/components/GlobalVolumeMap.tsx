@@ -10,6 +10,7 @@ interface GlobalVolumeMapProps {
 }
 
 export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const [hoveredExchange, setHoveredExchange] = useState<Exchange | null>(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
   const [systemTime, setSystemTime] = useState<Date>(new Date());
@@ -40,29 +41,38 @@ export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapPr
     return `$${vol.toFixed(1)}B`;
   };
 
-  const handleMouseMove = (e: React.MouseEvent, exchange: Exchange) => {
-    // Tooltip approximate dimensions
+  const handleInteraction = (e: React.MouseEvent | React.TouchEvent, exchange: Exchange) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    
+    // The SVG has viewBox="0 0 1000 500" and preserves aspect ratio
+    const scaleFactor = Math.min(rect.width / 1000, rect.height / 500);
+    const offsetX = (rect.width - 1000 * scaleFactor) / 2;
+    const offsetY = (rect.height - 500 * scaleFactor) / 2;
+
+    const actualMapX = exchange.mapX * scaleFactor + offsetX;
+    const actualMapY = exchange.mapY * scaleFactor + offsetY;
+
     const tooltipWidth = 260;
     const tooltipHeight = 180;
     
-    // SVG logical dimensions
-    const svgWidth = 1000;
-    const svgHeight = 500;
-    
-    // Position tooltip relative to SVG canvas (default bottom-right)
-    let x = exchange.mapX + 15;
-    let y = exchange.mapY + 15;
-    
+    let x = actualMapX + 15;
+    let y = actualMapY + 15;
+
     // Prevent overflow on the right
-    if (x + tooltipWidth > svgWidth) {
-      x = exchange.mapX - tooltipWidth - 15;
+    if (x + tooltipWidth > rect.width) {
+      x = actualMapX - tooltipWidth - 15;
     }
     
     // Prevent overflow on the bottom
-    if (y + tooltipHeight > svgHeight) {
-      y = exchange.mapY - tooltipHeight - 15;
+    if (y + tooltipHeight > rect.height) {
+      y = actualMapY - tooltipHeight - 15;
     }
     
+    // Prevent overflow on ultra small screens
+    if (x < 10) x = 10;
+    if (y < 10) y = 10;
+
     setHoverPos({ x, y });
     setHoveredExchange(exchange);
   };
@@ -121,12 +131,13 @@ export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapPr
       </div>
 
       {/* SVG Map Canvas */}
-      <div className="glass-panel" style={{ flex: 1, position: 'relative', background: 'var(--bg-surface-glass)', minHeight: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+      <div ref={containerRef} className="glass-panel" style={{ flex: 1, position: 'relative', background: 'var(--bg-surface-glass)', minHeight: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
         <svg 
           viewBox="0 0 1000 500" 
           width="100%" 
           height="100%" 
           style={{ maxWidth: '100%', maxHeight: '100%', display: 'block' }}
+          onClick={() => setHoveredExchange(null)}
         >
           {/* Grid lines for sci-fi look */}
           <defs>
@@ -172,9 +183,17 @@ export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapPr
               <g 
                 key={exchange.id}
                 style={{ cursor: 'pointer' }}
-                onMouseEnter={(e) => handleMouseMove(e, exchange)}
-                onMouseMove={(e) => handleMouseMove(e, exchange)}
+                onMouseEnter={(e) => handleInteraction(e, exchange)}
+                onMouseMove={(e) => handleInteraction(e, exchange)}
                 onMouseLeave={() => setHoveredExchange(null)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleInteraction(e, exchange);
+                }}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  handleInteraction(e, exchange);
+                }}
               >
                 {/* Glow ring if open */}
                 {isOpen ? (
@@ -246,24 +265,20 @@ export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapPr
           })}
         </svg>
 
-        {/* Hover Info Tooltip Card */}
+        {/* Hover Info Tooltip Card / Mobile Bottom Sheet */}
         {hoveredExchange && (
           <div
-            className="glass-panel animate-fade-in"
+            className="map-tooltip animate-fade-in"
             style={{
-              position: 'absolute',
               left: `${hoverPos.x}px`,
               top: `${hoverPos.y}px`,
-              pointerEvents: 'none',
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-color-hover)',
-              borderRadius: '10px',
-              padding: '12px 14px',
-              zIndex: 100,
-              width: '260px',
-              boxShadow: 'var(--glass-shadow)',
             }}
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
           >
+            {/* Small drag handle only visible on mobile */}
+            <div className="mobile-tooltip-handle" style={{ display: 'none' }}></div>
+            
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
               <div>
                 <h4 style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text-primary)' }}>{hoveredExchange.name}</h4>
