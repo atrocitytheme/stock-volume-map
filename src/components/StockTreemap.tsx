@@ -269,7 +269,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
           return (
             <div
               key={`stock-node-${stock.symbol}-${idx}`}
-              onClick={() => onSelectStock(stock)}
+              onClick={() => onSelectStock?.(stock)}
               onMouseMove={(e) => handleMouseMove(e, stock)}
               onMouseLeave={() => setHoveredStock(null)}
               className={`${flashClass}`}
