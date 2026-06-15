@@ -347,7 +347,7 @@ body {
   
   .mobile-map-container {
     min-height: 350px !important;
-    height: 350px !important;
+    height: auto !important;
     flex: none !important;
   }
   
