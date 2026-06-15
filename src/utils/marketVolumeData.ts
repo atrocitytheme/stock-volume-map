@@ -5,7 +5,7 @@ export interface MarketVolumePoint {
   isMarketHours: boolean;
 }
 
-export function generateVolumeData(timeframe: '24h' | '7d' | '30d'): MarketVolumePoint[] {
+export function generateVolumeData(timeframe: '24h' | '7d' | '30d' | 'ytd'): MarketVolumePoint[] {
   const data: MarketVolumePoint[] = [];
   const now = new Date();
   
@@ -76,6 +76,34 @@ export function generateVolumeData(timeframe: '24h' | '7d' | '30d'): MarketVolum
         time: timeString,
         timestamp: pointTime.getTime(),
         volume: Math.max(0, Math.floor(baseVolume * (1 + (Math.random() - 0.5) * 0.1))),
+        isMarketHours: !isWeekend
+      });
+    }
+  } else if (timeframe === 'ytd') {
+    const currentYear = now.getFullYear();
+    let current = new Date(currentYear, 0, 1); // Jan 1st of current year
+    current.setHours(0, 0, 0, 0);
+    
+    // Calculate days from Jan 1 to now
+    const daysYTD = Math.ceil((now.getTime() - current.getTime()) / (24 * 60 * 60 * 1000));
+
+    for (let i = 0; i <= daysYTD; i++) {
+      const pointTime = new Date(current.getTime() + i * 24 * 60 * 60 * 1000);
+      const day = pointTime.getDay();
+      const isWeekend = day === 0 || day === 6;
+      const timeString = `${pointTime.getMonth() + 1}/${pointTime.getDate()}`;
+      
+      let baseVolume = isWeekend ? 500000 : 35000000 + Math.random() * 15000000;
+      
+      // Add macro trend for YTD (e.g., higher volume in certain months)
+      const month = pointTime.getMonth();
+      if (month === 0 || month === 2) baseVolume *= 1.2; // Jan/Mar volatility
+      if (month === 7 || month === 8) baseVolume *= 0.8; // Summer lull
+      
+      data.push({
+        time: timeString,
+        timestamp: pointTime.getTime(),
+        volume: Math.max(0, Math.floor(baseVolume * (1 + (Math.random() - 0.5) * 0.15))),
         isMarketHours: !isWeekend
       });
     }

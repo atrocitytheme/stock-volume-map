@@ -5,7 +5,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { generateVolumeData } from '@/utils/marketVolumeData';
 
 export default function MarketVolumeChart({ isDataFlashing }: { isDataFlashing?: boolean }) {
-  const [timeframe, setTimeframe] = useState<'24h' | '7d' | '30d'>('24h');
+  const [timeframe, setTimeframe] = useState<'24h' | '7d' | '30d' | 'ytd'>('ytd');
   
   // Generate static aesthetic data based on selected timeframe
   const data = useMemo(() => generateVolumeData(timeframe), [timeframe]);
@@ -25,11 +25,11 @@ export default function MarketVolumeChart({ isDataFlashing }: { isDataFlashing?:
             TOTAL MARKET VOLUME
           </h2>
           <p style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 600 }}>
-            {timeframe === '24h' ? 'Past 24 Hours' : timeframe === '7d' ? 'Past 7 Days' : 'Past 30 Days'} (Est. Shares Traded)
+            {timeframe === '24h' ? 'Past 24 Hours' : timeframe === '7d' ? 'Past 7 Days' : timeframe === '30d' ? 'Past 30 Days' : 'Year to Date'} (Est. Shares Traded)
           </p>
         </div>
         <div style={{ display: 'flex', gap: '4px' }}>
-          {(['24h', '7d', '30d'] as const).map(tf => (
+          {(['24h', '7d', '30d', 'ytd'] as const).map(tf => (
             <button
               key={tf}
               onClick={() => setTimeframe(tf)}
