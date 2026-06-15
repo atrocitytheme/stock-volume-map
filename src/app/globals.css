@@ -275,33 +275,6 @@ body {
     display: none !important;
   }
 
-  /* Mobile Treemap Grid Override */
-  .treemap-container {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    overflow-y: auto !important;
-    align-content: flex-start !important;
-    padding: 8px !important;
-    gap: 6px !important;
-  }
-  
-  .treemap-sector {
-    display: none !important;
-  }
-  
-  .treemap-leaf {
-    position: relative !important;
-    left: auto !important;
-    top: auto !important;
-    width: auto !important;
-    height: auto !important;
-    flex: 1 1 80px !important;
-    min-height: 60px !important;
-    display: flex !important;
-    margin: 0 !important;
-    opacity: 1 !important; /* Force visibility even if size was small */
-  }
-
   .treemap-symbol, .treemap-percent {
     display: block !important;
     font-size: 13px !important;

@@ -383,14 +383,14 @@ export default function Home() {
 
           {/* Primary visualization pane */}
           <div className="mobile-main-grid" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', height: '100%' }}>
-            <div className="mobile-map-container" style={{ flex: 2, overflowY: 'visible', minHeight: '400px' }}>
+            <div className="mobile-map-container" style={{ flexShrink: 0, minHeight: '400px' }}>
               {activeTab === 'treemap' ? (
                 <StockTreemap stocks={stocks} onSelectStock={setSelectedStock} isDataFlashing={isDataFlashing} />
               ) : (
                 <GlobalVolumeMap exchanges={exchanges} stocks={stocks} />
               )}
             </div>
-            <div className="mobile-chart-container" style={{ flex: 1, overflow: 'hidden', minHeight: '150px' }}>
+            <div className="mobile-chart-container" style={{ flexShrink: 0, minHeight: '150px' }}>
               <MarketVolumeChart isDataFlashing={isDataFlashing} />
             </div>
           </div>
