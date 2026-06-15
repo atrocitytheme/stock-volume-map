@@ -19,7 +19,8 @@ import {
 import StockTreemap from '@/components/StockTreemap';
 import GlobalVolumeMap from '@/components/GlobalVolumeMap';
 import StockDetailsModal from '@/components/StockDetailsModal';
-import MarketVolumeChart from '@/components/MarketVolumeChart';
+import MarketVolumeChart from '../components/MarketVolumeChart';
+import AdBanner from '../components/AdBanner';
 import { Layers, Globe, Info, Sun, Moon } from 'lucide-react';
 
 interface IndexTicker {
@@ -420,6 +421,9 @@ export default function Home() {
           onClose={() => setSelectedStock(null)} 
         />
       )}
+
+      {/* Global Advertisement Section */}
+      <AdBanner />
 
     </div>
   );
