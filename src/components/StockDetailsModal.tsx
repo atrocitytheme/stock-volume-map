@@ -89,12 +89,12 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
         style={{
           background: 'var(--bg-surface)',
           width: '100%',
-          maxWidth: '850px',
-          maxHeight: '90vh',
+          maxWidth: '900px',
+          maxHeight: '100%',
           display: 'flex',
           flexDirection: 'column',
           border: '1px solid var(--border-color)',
-          boxShadow: 'var(--glass-shadow)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
           overflow: 'hidden'
         }}
       >
@@ -127,7 +127,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
         </div>
 
         {/* Modal Body Container */}
-        <div className="mobile-main-grid" style={{ padding: '20px', overflowY: 'auto', flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div className="mobile-modal-grid" style={{ padding: '20px', overflowY: 'auto', flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           
           {/* Left Column: Chart & Stats */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

@@ -305,7 +305,7 @@ export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapPr
             >
               <div 
                 className={isMobile ? "glass-panel" : ""}
-                style={isMobile ? { background: 'var(--bg-surface)', padding: '20px', width: '100%', maxWidth: '400px' } : {}}
+                style={isMobile ? { background: 'var(--bg-surface)', padding: '20px', width: '100%', maxWidth: '400px', maxHeight: '100%', overflowY: 'auto' } : {}}
                 onClick={(e) => isMobile && e.stopPropagation()}
               >
                 

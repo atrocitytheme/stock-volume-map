@@ -247,39 +247,11 @@ body {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .map-tooltip,
-  .recharts-tooltip-wrapper {
-    position: fixed !important;
-    top: 0 !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    border-radius: 0 !important;
-    border: none !important;
-    padding: 24px !important;
-    background: var(--bg-surface-glass) !important;
-    backdrop-filter: blur(24px) !important;
-    -webkit-backdrop-filter: blur(24px) !important;
-    box-shadow: none !important;
-    z-index: 9999 !important;
-    max-height: none !important;
-    overflow-y: auto !important;
+  .mobile-modal-grid {
     display: flex !important;
     flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    transform: none !important; /* Overrides Recharts translate */
   }
 
-  .map-tooltip {
-    pointer-events: auto !important;
-  }
-
-  .recharts-tooltip-wrapper {
-    pointer-events: none !important; /* Allows taps to pass through and dismiss */
-  }
 
   .recharts-default-tooltip {
     border-radius: 12px !important;
