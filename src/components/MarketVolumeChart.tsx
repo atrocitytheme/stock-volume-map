@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { generate24hVolumeData } from '@/utils/marketVolumeData';
+import { generateVolumeData } from '@/utils/marketVolumeData';
 
 export default function MarketVolumeChart({ isDataFlashing }: { isDataFlashing?: boolean }) {
-  // Generate static aesthetic data once per session
-  const data = useMemo(() => generate24hVolumeData(), []);
+  const [timeframe, setTimeframe] = useState<'24h' | '7d' | '30d'>('24h');
+  
+  // Generate static aesthetic data based on selected timeframe
+  const data = useMemo(() => generateVolumeData(timeframe), [timeframe]);
 
   return (
     <div className="glass-panel" style={{ 
@@ -22,18 +24,30 @@ export default function MarketVolumeChart({ isDataFlashing }: { isDataFlashing?:
           <h2 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
             TOTAL MARKET VOLUME
           </h2>
-          <p style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 600 }}>Past 24 Hours (Est. Shares Traded)</p>
+          <p style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+            {timeframe === '24h' ? 'Past 24 Hours' : timeframe === '7d' ? 'Past 7 Days' : 'Past 30 Days'} (Est. Shares Traded)
+          </p>
         </div>
-        <div style={{ 
-          background: 'rgba(16, 185, 129, 0.1)', 
-          padding: '4px 8px', 
-          borderRadius: '4px', 
-          border: '1px solid var(--color-gain-bright)',
-          fontSize: '10px',
-          fontWeight: 800,
-          color: 'var(--color-gain-bright)'
-        }}>
-          LIVE MODEL
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {(['24h', '7d', '30d'] as const).map(tf => (
+            <button
+              key={tf}
+              onClick={() => setTimeframe(tf)}
+              style={{
+                background: timeframe === tf ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                border: `1px solid ${timeframe === tf ? 'var(--color-gain-bright)' : 'var(--border-color)'}`,
+                fontSize: '10px',
+                fontWeight: 800,
+                color: timeframe === tf ? 'var(--color-gain-bright)' : 'var(--text-muted)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {tf.toUpperCase()}
+            </button>
+          ))}
         </div>
       </div>
 
