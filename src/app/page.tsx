@@ -131,30 +131,33 @@ export default function Home() {
 
         // Update indices based on live data
         setIndices(prevIndices => {
+          const techAvgChange = data.stocks
+            .filter((s: Stock) => s.sector === 'Technology')
+            .reduce((sum: number, s: Stock) => sum + s.priceChangePercent, 0) / Math.max(1, data.stocks.filter((s: Stock) => s.sector === 'Technology').length);
+            
+          const marketAvgChange = data.stocks.reduce((sum: number, s: Stock) => sum + s.priceChangePercent, 0) / Math.max(1, data.stocks.length);
+
           return prevIndices.map(ind => {
-            let weightFactor = 0.0001;
+            const baseValue = ind.value - ind.change;
+            let targetPercent = ind.changePercent;
+
             if (ind.name === 'NASDAQ 100') {
-              const techAvgChange = data.stocks
-                .filter((s: Stock) => s.sector === 'Technology')
-                .reduce((sum: number, s: Stock) => sum + s.priceChangePercent, 0) / Math.max(1, data.stocks.filter((s: Stock) => s.sector === 'Technology').length);
-              weightFactor = techAvgChange * 0.08;
+              targetPercent = techAvgChange;
             } else if (ind.name === 'S&P 500') {
-              const marketAvgChange = data.stocks.reduce((sum: number, s: Stock) => sum + s.priceChangePercent, 0) / data.stocks.length;
-              weightFactor = marketAvgChange * 0.05;
+              targetPercent = marketAvgChange;
             } else {
-              weightFactor = (Math.random() - 0.485) * 0.02;
+              // Add minor jitter for other indices to keep them looking live
+              targetPercent = ind.changePercent + (Math.random() - 0.5) * 0.05;
             }
 
-            const change = ind.value * weightFactor;
-            const nextValue = Number((ind.value + change).toFixed(2));
-            const nextChange = Number((ind.change + change).toFixed(2));
-            const nextPercent = Number(((nextChange / (ind.value - nextChange)) * 100).toFixed(2));
+            const nextChange = baseValue * (targetPercent / 100);
+            const nextValue = baseValue + nextChange;
 
             return {
               ...ind,
-              value: nextValue,
-              change: nextChange,
-              changePercent: nextPercent
+              value: Number(nextValue.toFixed(2)),
+              change: Number(nextChange.toFixed(2)),
+              changePercent: Number(targetPercent.toFixed(2))
             };
           });
         });
