@@ -189,7 +189,7 @@ export default function Home() {
   const activeExchangesCount = exchanges.filter(ex => isExchangeOpen(ex)).length;
 
   return (
-    <div className="mobile-page-root" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <div className="mobile-page-root" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       
       {/* Top Header Navigation */}
       <header 
@@ -363,6 +363,7 @@ export default function Home() {
           gridTemplateColumns: 'minmax(0, 1fr)', 
           gap: '10px', 
           padding: '10px', 
+          minHeight: '700px',
           overflow: 'hidden'
         }}
       >
