@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Exchange, Stock, isExchangeOpen } from '../utils/marketDataSim';
 import { Globe, MapPin, Clock, TrendingUp, Activity, Tag } from 'lucide-react';
 
@@ -15,6 +16,14 @@ export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapPr
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
   const [systemTime, setSystemTime] = useState<Date>(new Date());
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Tick the system clock every second for exchange status calculations
   useEffect(() => {
@@ -41,7 +50,14 @@ export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapPr
     return `$${vol.toFixed(1)}B`;
   };
 
-  const handleInteraction = (e: React.MouseEvent | React.TouchEvent, exchange: Exchange) => {
+  const handleInteraction = (e: React.MouseEvent | React.TouchEvent, exchange: Exchange, isHover: boolean) => {
+    if (isMobile && isHover) return; // Disable hover interactions entirely on mobile
+
+    if (isMobile) {
+      setHoveredExchange(exchange); // On mobile, just trigger the modal state
+      return;
+    }
+
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     
@@ -183,16 +199,16 @@ export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapPr
               <g 
                 key={exchange.id}
                 style={{ cursor: 'pointer' }}
-                onMouseEnter={(e) => handleInteraction(e, exchange)}
-                onMouseMove={(e) => handleInteraction(e, exchange)}
-                onMouseLeave={() => setHoveredExchange(null)}
+                onMouseEnter={(e) => handleInteraction(e, exchange, true)}
+                onMouseMove={(e) => handleInteraction(e, exchange, true)}
+                onMouseLeave={() => !isMobile && setHoveredExchange(null)}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleInteraction(e, exchange);
+                  handleInteraction(e, exchange, false);
                 }}
                 onTouchStart={(e) => {
                   e.stopPropagation();
-                  handleInteraction(e, exchange);
+                  handleInteraction(e, exchange, false);
                 }}
               >
                 {/* Glow ring if open */}
@@ -266,20 +282,34 @@ export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapPr
         </svg>
 
         {/* Hover Info Tooltip Card / Mobile Bottom Sheet */}
-        {hoveredExchange && (
-          <div
-            className="map-tooltip animate-fade-in"
-            style={{
-              left: `${hoverPos.x}px`,
-              top: `${hoverPos.y}px`,
-            }}
-            onClick={() => setHoveredExchange(null)}
-            onTouchStart={() => {}} // Allows touch to register as click
-          >
-            {/* Small drag handle only visible on mobile */}
-            <div className="mobile-tooltip-handle" style={{ display: 'none' }}></div>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+        {hoveredExchange && (() => {
+          const content = (
+            <div
+              className={`map-tooltip animate-fade-in`}
+              style={isMobile ? {
+                position: 'fixed',
+                top: 0, left: 0,
+                width: '100vw', height: '100vh',
+                background: 'var(--bg-overlay-heavy)',
+                backdropFilter: 'blur(8px)',
+                zIndex: 9999,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                padding: '20px'
+              } : {
+                left: `${hoverPos.x}px`,
+                top: `${hoverPos.y}px`,
+              }}
+              onClick={() => isMobile && setHoveredExchange(null)}
+            >
+              <div 
+                className={isMobile ? "glass-panel" : ""}
+                style={isMobile ? { background: 'var(--bg-surface)', padding: '20px', width: '100%', maxWidth: '400px' } : {}}
+                onClick={(e) => isMobile && e.stopPropagation()}
+              >
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
               <div>
                 <h4 style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text-primary)' }}>{hoveredExchange.name}</h4>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px', color: 'var(--text-secondary)', fontSize: '10px' }}>
@@ -360,11 +390,24 @@ export default function GlobalVolumeMap({ exchanges, stocks }: GlobalVolumeMapPr
               </div>
             </div>
             
-            <div className="mobile-tooltip-close-hint" style={{ display: 'none' }}>
-              Tap anywhere to close
+              {isMobile && (
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                  <button 
+                    onClick={() => setHoveredExchange(null)}
+                    style={{ background: 'var(--bg-overlay-light)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, width: '100%' }}
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+          
+          return isMobile && typeof document !== 'undefined' 
+            ? createPortal(content, document.body) 
+            : content;
+        })()}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Stock, generateOrderBook, OrderBook } from '../utils/marketDataSim';
 import { generate24hVolumeData } from '../utils/marketVolumeData';
 import { X, TrendingUp, BarChart2, DollarSign, Database, Activity } from 'lucide-react';
@@ -61,7 +62,12 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
   // Price progress inside daily range
   const rangePercent = Math.min(Math.max(((stock.price - stock.low) / (stock.high - stock.low || 1)) * 100, 0), 100);
 
-  return (
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <div 
       style={{
         position: 'fixed',
@@ -71,7 +77,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
         height: '100vh',
         background: 'var(--bg-overlay-heavy)',
         backdropFilter: 'blur(8px)',
-        zIndex: 1000,
+        zIndex: 9999,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
@@ -93,8 +99,8 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
         }}
       >
         {/* Modal Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid var(--border-color)' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+        <div className="mobile-wrap" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid var(--border-color)' }}>
+          <div className="mobile-wrap" style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
             <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text-primary)' }}>{stock.symbol}</h2>
             <h3 style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>{stock.name}</h3>
             <span style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'var(--bg-overlay-light)', padding: '2px 6px', borderRadius: '4px' }}>
@@ -126,7 +132,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
           {/* Left Column: Chart & Stats */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Price Box */}
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+            <div className="mobile-wrap" style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
               <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                 ${stock.price.toFixed(2)}
               </span>
@@ -398,6 +404,7 @@ export default function StockDetailsModal({ stock, onClose }: StockDetailsModalP
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

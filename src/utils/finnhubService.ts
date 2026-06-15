@@ -104,8 +104,8 @@ export function normalizeQuote(stock: Stock, quote: FinnhubQuote, marketCapB?: n
   const nextOpenPrice = quote.o || stock.openPrice;
   const nextHigh = quote.h || Math.max(nextPrice, stock.high);
   const nextLow = quote.l || Math.min(nextPrice, stock.low);
-  const nextPriceChange = Number((nextPrice - nextOpenPrice).toFixed(2));
-  const nextPriceChangePercent = Number(((nextPriceChange / nextOpenPrice) * 100).toFixed(2));
+  const nextPriceChange = quote.d !== undefined && quote.d !== null ? quote.d : Number((nextPrice - (quote.pc || nextOpenPrice)).toFixed(2));
+  const nextPriceChangePercent = quote.dp !== undefined && quote.dp !== null ? Number(quote.dp.toFixed(2)) : Number(((nextPriceChange / (quote.pc || nextOpenPrice)) * 100).toFixed(2));
 
   // Seed history with standard updates if it's empty, or maintain existing
   const nextHistory = [...stock.history];
@@ -135,8 +135,8 @@ export function normalizeQuote(stock: Stock, quote: FinnhubQuote, marketCapB?: n
 export function buildInitialStock(symbol: string, quote: FinnhubQuote, profile: StockProfile | null): Stock {
   const currentPrice = quote.c || 0;
   const openPrice = quote.o || currentPrice;
-  const priceChange = Number((currentPrice - openPrice).toFixed(2));
-  const priceChangePercent = openPrice > 0 ? Number(((priceChange / openPrice) * 100).toFixed(2)) : 0;
+  const priceChange = quote.d !== undefined && quote.d !== null ? quote.d : Number((currentPrice - (quote.pc || openPrice)).toFixed(2));
+  const priceChangePercent = quote.dp !== undefined && quote.dp !== null ? Number(quote.dp.toFixed(2)) : (quote.pc ? Number(((priceChange / quote.pc) * 100).toFixed(2)) : 0);
   
   // Set default fallback values for avgVolume if not available through another API
   const defaultAvgVolume = 5000000;
