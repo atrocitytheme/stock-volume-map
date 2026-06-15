@@ -145,12 +145,6 @@ export default function Home() {
 
 
     const tick = generateTick(stocks);
-    
-    setRecentTicks(prev => {
-      const next = [tick, ...prev];
-      if (next.length > 40) next.pop();
-      return next;
-    });
 
     setStocks(prevStocks => {
       const updatedStocks = applyTick(prevStocks, tick);
@@ -285,7 +279,6 @@ export default function Home() {
     }
     setStocks([]); // Reset to empty array instead of mock data
     setExchanges(INITIAL_EXCHANGES);
-    setRecentTicks([]);
     setMarketEventMessage("🔄 System Reset: Simulation parameters restored to baseline.");
     
     if (eventTimeout) clearTimeout(eventTimeout);
