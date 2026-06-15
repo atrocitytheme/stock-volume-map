@@ -63,13 +63,8 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
     return 'var(--color-loss-bright)';
   };
 
-  // Filter stocks to Top 5 Volume and Top 5 Market Cap
-  const topVolume = [...stocks].sort((a, b) => b.volume - a.volume).slice(0, 5);
-  const topMarketCap = [...stocks].sort((a, b) => b.marketCap - a.marketCap).slice(0, 5);
-  
-  // Combine and remove duplicates by symbol
-  const topStockSymbols = new Set([...topVolume, ...topMarketCap].map(s => s.symbol));
-  const filteredStocks = stocks.filter(s => topStockSymbols.has(s.symbol));
+  // We use all explicitly tracked stocks instead of filtering to Top 5
+  const filteredStocks = stocks;
 
   // Group stocks by sector and build hierarchy using only the filtered stocks
   const sectors = Array.from(new Set(filteredStocks.map(s => s.sector)));
