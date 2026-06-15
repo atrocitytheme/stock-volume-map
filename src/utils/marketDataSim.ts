@@ -70,7 +70,7 @@ export const SECTORS = [
 ];
 
 export const DEFAULT_SYMBOLS: string[] = [
-  'QQQ', 'SPY', 'VOO', 'IWM', 'SMH', 'XBI', 'DIA', 'EWU', 'EWJ', 'IJH'
+  'QQQ', 'SPY', 'VOO', 'IWM', 'SMH', 'XBI', 'DIA', 'EWU', 'EWJ', 'IJH', 'ARKX', 'XLE', 'XLB'
 ];
 
 export const INITIAL_EXCHANGES: Exchange[] = [

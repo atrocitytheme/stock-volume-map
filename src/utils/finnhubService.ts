@@ -149,7 +149,10 @@ export function buildInitialStock(symbol: string, quote: FinnhubQuote, profile: 
     'EWJ': 4000000,
     'DIA': 3000000,
     'EWU': 2000000,
-    'IJH': 1000000
+    'IJH': 1000000,
+    'XLE': 15000000,
+    'XLB': 5000000,
+    'ARKX': 200000
   };
   
   const defaultAvgVolume = volumeMap[symbol] || 5000000;
@@ -165,7 +168,10 @@ export function buildInitialStock(symbol: string, quote: FinnhubQuote, profile: 
     'DIA': 'Dow Jones',
     'EWU': 'UK Market',
     'EWJ': 'Japan Market',
-    'IJH': 'Other'
+    'IJH': 'Other',
+    'ARKX': 'Space & Exploration',
+    'XLE': 'Energy',
+    'XLB': 'Chemistry & Materials'
   };
 
   const finalSector = sectorMap[symbol] || (profile ? profile.sector : 'Other');
