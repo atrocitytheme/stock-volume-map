@@ -25,6 +25,14 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
   const [searchQuery, setSearchQuery] = useState('');
   const [hoveredStock, setHoveredStock] = useState<Stock | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Handle resizing of the container
   useEffect(() => {
@@ -98,6 +106,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
   const leaves = root.leaves();
 
   const handleMouseMove = (e: React.MouseEvent, stock: Stock) => {
+    if (isMobile) return; // Disable hover completely on mobile
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     
@@ -269,7 +278,7 @@ export default function StockTreemap({ stocks, onSelectStock, isDataFlashing }: 
               key={`stock-node-${stock.symbol}-${idx}`}
               onClick={() => onSelectStock?.(stock)}
               onMouseMove={(e) => handleMouseMove(e, stock)}
-              onMouseLeave={() => setHoveredStock(null)}
+              onMouseLeave={() => !isMobile && setHoveredStock(null)}
               className={`treemap-leaf ${flashClass}`}
               style={{
                 position: 'absolute',
