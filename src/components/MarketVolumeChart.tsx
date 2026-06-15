@@ -67,7 +67,7 @@ export default function MarketVolumeChart({ isDataFlashing }: { isDataFlashing?:
                 fontWeight: 600
               }}
               itemStyle={{ color: 'var(--color-volume)' }}
-              formatter={(value: number) => [new Intl.NumberFormat('en-US').format(value) + ' Vol', 'Volume']}
+              formatter={(value: any) => [new Intl.NumberFormat('en-US').format(Number(value) || 0) + ' shares', 'Volume']}
               labelStyle={{ color: 'var(--text-secondary)', marginBottom: '4px' }}
             />
             <Area 
