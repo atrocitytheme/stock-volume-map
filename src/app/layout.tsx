@@ -16,20 +16,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AeroTrade | Live Stock Volume Map & Today's Volume Trends",
-  description: "Track stock volume today with AeroTrade's interactive volume map. Monitor real-time market activity, sector block trades, and global exchange volumes.",
-  keywords: ["stock volume", "volume map", "volume today", "stock market heatmap", "trading volume analysis", "global exchanges", "real-time stock volume"],
+  title: "AeroTrade | Market Macro Indexes Tracker & Risk Appetite Dashboard",
+  description: "Track market macro indexes, risk appetite, and global exchange activity in real time. Monitor GS Risk Appetite Index, sector heatmaps, and macro indicators.",
+  keywords: ["market macro indexes", "risk appetite index", "macro tracker", "Goldman Sachs risk appetite", "market heatmap", "global exchanges", "real-time macro dashboard"],
   authors: [{ name: "AeroTrade" }],
   openGraph: {
-    title: "AeroTrade | Live Stock Volume Map",
-    description: "Track stock volume today with AeroTrade's live volume map. Monitor real-time market activity and sector block trades.",
+    title: "AeroTrade | Market Macro Indexes Tracker",
+    description: "Track market macro indexes, risk appetite, and global exchange activity in real time with AeroTrade's interactive macro dashboard.",
     type: "website",
     siteName: "AeroTrade",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AeroTrade | Live Stock Volume Map",
-    description: "Track stock volume today with AeroTrade's live volume map.",
+    title: "AeroTrade | Market Macro Indexes Tracker",
+    description: "Track market macro indexes, risk appetite, and global exchange activity in real time.",
   },
   robots: "index, follow",
 };

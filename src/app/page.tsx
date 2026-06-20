@@ -20,6 +20,7 @@ import StockTreemap from '@/components/StockTreemap';
 import GlobalVolumeMap from '@/components/GlobalVolumeMap';
 import StockDetailsModal from '@/components/StockDetailsModal';
 import MarketVolumeChart from '../components/MarketVolumeChart';
+import RiskAppetiteChart from '../components/RiskAppetiteChart';
 import AdBanner from '../components/AdBanner';
 import { Layers, Globe, Info, Sun, Moon } from 'lucide-react';
 
@@ -216,9 +217,9 @@ export default function Home() {
           </div>
           <div>
             <h1 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
-              STOCK VOLUME <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>|</span> MAP
+              MACRO INDEXES <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>|</span> TRACKER
             </h1>
-            <h2 style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, margin: 0 }}>REAL-TIME ORDER FLOW & VOLUME TODAY</h2>
+            <h2 style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, margin: 0 }}>REAL-TIME MARKET MACRO & RISK APPETITE</h2>
           </div>
         </div>
 
@@ -392,6 +393,9 @@ export default function Home() {
             </div>
             <div className="mobile-chart-container" style={{ flexShrink: 0, minHeight: '150px' }}>
               <MarketVolumeChart isDataFlashing={isDataFlashing} />
+            </div>
+            <div className="mobile-risk-container" style={{ flexShrink: 0, minHeight: '360px' }}>
+              <RiskAppetiteChart />
             </div>
           </div>
 
