@@ -21,6 +21,7 @@ import GlobalVolumeMap from '@/components/GlobalVolumeMap';
 import StockDetailsModal from '@/components/StockDetailsModal';
 import MarketVolumeChart from '../components/MarketVolumeChart';
 import RiskAppetiteChart from '../components/RiskAppetiteChart';
+import TacoIndexChart from '../components/TacoIndexChart';
 import AdBanner from '../components/AdBanner';
 import { Layers, Globe, Info, Sun, Moon } from 'lucide-react';
 
@@ -396,6 +397,9 @@ export default function Home() {
             </div>
             <div className="mobile-risk-container" style={{ flexShrink: 0, minHeight: '360px' }}>
               <RiskAppetiteChart />
+            </div>
+            <div className="mobile-taco-container" style={{ flexShrink: 0, minHeight: '360px' }}>
+              <TacoIndexChart />
             </div>
           </div>
 
