@@ -9,24 +9,32 @@ export default function AdBanner({ format = 'horizontal' }: { format?: AdFormat 
   const pushedRef = useRef(false);
 
   useEffect(() => {
-    // Only push to AdSense if the ad slot is currently visible (width > 0).
-    // This prevents "No slot size for availableWidth=0" errors when ads are hidden via CSS media queries.
-    if (adRef.current && !pushedRef.current) {
-      // Use requestAnimationFrame or setTimeout to ensure layout has painted
-      const timer = setTimeout(() => {
-        if (adRef.current && adRef.current.offsetWidth > 0) {
-          pushedRef.current = true;
-          try {
-            // @ts-ignore
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-          } catch (err) {
-            console.error('AdSense push error:', err);
-          }
-        }
-      }, 100);
+    if (!adRef.current || pushedRef.current) return;
+
+    // Use IntersectionObserver to wait until the ad is actually visible and painted on the screen.
+    // This perfectly prevents the "availableWidth=0" error caused by CSS media queries hiding the ad.
+    const observer = new IntersectionObserver((entries) => {
+      const [entry] = entries;
       
-      return () => clearTimeout(timer);
-    }
+      // When the ad slot comes into view and has a real width, push the ad
+      if (entry.isIntersecting && entry.boundingClientRect.width > 0 && !pushedRef.current) {
+        pushedRef.current = true;
+        try {
+          // @ts-ignore
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        } catch (err) {
+          console.error('AdSense push error:', err);
+        }
+        observer.disconnect();
+      }
+    }, { 
+      // Trigger as soon as 10% of the ad slot is visible
+      threshold: 0.1 
+    });
+
+    observer.observe(adRef.current);
+
+    return () => observer.disconnect();
   }, []);
 
   // Determine styles based on format
