@@ -41,6 +41,25 @@ export default function Home() {
   
   // Tab View
   const [activeTab, setActiveTab] = useState<'treemap' | 'geomap'>('treemap');
+  const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
+
+  const getCompactList = () => {
+    const categories: Record<string, { totalVol: number, totalReturnVol: number }> = {};
+    stocks.forEach(s => {
+      const cat = s.category || 'Other';
+      if (!categories[cat]) categories[cat] = { totalVol: 0, totalReturnVol: 0 };
+      categories[cat].totalVol += s.volume;
+      categories[cat].totalReturnVol += s.volume * (s.priceChangePercent / 100);
+    });
+
+    return Object.entries(categories)
+      .map(([name, data]) => {
+        const avgReturn = data.totalVol > 0 ? (data.totalReturnVol / data.totalVol) * 100 : 0;
+        return { name, avgReturn, volume: data.totalVol };
+      })
+      .sort((a, b) => b.volume - a.volume)
+      .slice(0, 4);
+  };
   
 
 
@@ -201,11 +220,7 @@ export default function Home() {
   return (
     <div className="mobile-page-root" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       
-      {/* Global Advertisement Section */}
-      <div style={{ margin: '10px 10px 0 10px' }}>
-        <AdBanner />
-      </div>
-      
+
       {/* Top Header Navigation */}
       <header 
         className="glass-panel mobile-header" 
@@ -370,75 +385,90 @@ export default function Home() {
       </div>
 
       {/* Main Split Grid */}
-      <main 
-        className="mobile-main-grid"
-        style={{ 
-          flex: 1, 
-          display: 'grid', 
-          gridTemplateColumns: 'minmax(0, 1fr)', 
-          gap: '10px', 
-          padding: '10px', 
-          minHeight: '700px',
-          overflow: 'hidden'
-        }}
-      >
-        
-        {/* Left Interactive Panel */}
-        <div className="mobile-main-grid" style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden', height: '100%' }}>
-          
+      <main style={{ padding: '10px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <div className="desktop-grid">
+          {/* LEFT PANE */}
+          <div className="desktop-left-pane">
+            
+            {/* Mobile Toggle */}
+            <div className="mode-toggle-container">
+              <div className="mode-toggle">
+                <button className={viewMode === 'compact' ? 'active' : ''} onClick={() => setViewMode('compact')}>
+                  <Info size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'text-top' }}/> Compact Mode
+                </button>
+                <button className={viewMode === 'detailed' ? 'active' : ''} onClick={() => setViewMode('detailed')}>
+                  Detailed Mode <Info size={12} style={{ display: 'inline', marginLeft: 4, verticalAlign: 'text-top' }}/>
+                </button>
+              </div>
+            </div>
 
+            {/* Map / Compact List */}
+            <div className="map-view-container" style={{ flex: 1, minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+              
+              {/* COMPACT VIEW (Hidden on desktop via CSS) */}
+              <div className={`view-compact ${viewMode === 'compact' ? 'active' : ''}`}>
+                <div className="compact-list" style={{ marginBottom: '16px' }}>
+                  {getCompactList().map((item, idx) => (
+                    <div key={idx} className="compact-list-item" style={{ background: item.avgReturn >= 0 ? 'var(--color-gain-dark)' : 'var(--color-loss-dark)' }}>
+                      <span>{idx + 1} {item.name} ({item.avgReturn >= 0 ? '+' : ''}{item.avgReturn.toFixed(2)}%) | Vol: {(item.volume/1000).toFixed(1)}K</span>
+                      <span>{item.avgReturn >= 0 ? '▲' : '▼'}</span>
+                    </div>
+                  ))}
+                </div>
+                {/* Mobile In-Feed Ad Placed Below Compact List */}
+                <AdBanner format="rectangle" />
+              </div>
 
+              {/* DETAILED VIEW (Always visible on desktop via CSS) */}
+              <div className={`view-detailed ${viewMode === 'detailed' ? 'active' : ''}`}>
+                <div className="mobile-map-container" style={{ flex: 1, minHeight: '400px', marginBottom: '16px' }}>
+                  {activeTab === 'treemap' ? (
+                    <StockTreemap stocks={stocks} onSelectStock={setSelectedStock} isDataFlashing={isDataFlashing} />
+                  ) : (
+                    <GlobalVolumeMap exchanges={exchanges} stocks={stocks} />
+                  )}
+                </div>
+                {/* Desktop Ad Below Treemap (Also visible on mobile detailed mode) */}
+                <AdBanner format="horizontal" />
+              </div>
 
-
-          {/* Primary visualization pane */}
-          <div className="mobile-main-grid" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', height: '100%' }}>
-            <div className="mobile-map-container" style={{ flexShrink: 0, minHeight: '400px' }}>
-              {activeTab === 'treemap' ? (
-                <StockTreemap stocks={stocks} onSelectStock={setSelectedStock} isDataFlashing={isDataFlashing} />
-              ) : (
-                <GlobalVolumeMap exchanges={exchanges} stocks={stocks} />
-              )}
-            </div>
-            <div style={{ flexShrink: 0 }}>
-              <TradingVolumeLinkCard isDataFlashing={isDataFlashing} />
-            </div>
-            <div className="mobile-risk-container" style={{ flexShrink: 0, minHeight: '360px' }}>
-              <RiskAppetiteChart />
-            </div>
-            <div className="mobile-taco-container" style={{ flexShrink: 0, minHeight: '360px' }}>
-              <TacoIndexChart />
-            </div>
-            <div className="mobile-realyield-container" style={{ flexShrink: 0, minHeight: '360px' }}>
-              <RealYieldChart />
-            </div>
-            <div style={{ flexShrink: 0, minHeight: '360px' }}>
-              <IakRecommendationChart />
             </div>
           </div>
 
-          {/* Footer Controls Dashboard */}
-          <div className="glass-panel mobile-footer" style={{ padding: '10px 16px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', background: 'var(--bg-surface-glass)' }}>
-            
-            {/* Quick Stats */}
-            <div className="mobile-stats-row" style={{ display: 'flex', gap: '24px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-              <div>
-                Traded Shares: <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{totalTradedVolShares.toLocaleString()}</strong>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                Breadth: 
-                <span style={{ color: 'var(--color-gain-bright)', fontWeight: 700 }}>{stocksUp} ▲</span>
-                <span style={{ color: 'var(--color-loss-bright)', fontWeight: 700 }}>{stocksDown} ▼</span>
-              </div>
-              <div>
-                Active Markets: <strong style={{ color: 'var(--text-primary)' }}>{activeExchangesCount} / {exchanges.length}</strong>
-              </div>
+          {/* RIGHT PANE */}
+          <div className="desktop-right-pane">
+            <TradingVolumeLinkCard isDataFlashing={isDataFlashing} />
+            <RiskAppetiteChart />
+            <div className="desktop-only-ad" style={{ marginTop: 'auto' }}>
+              <AdBanner format="rectangle" />
             </div>
-
-
-
           </div>
         </div>
 
+        {/* SECONDARY GRID for other charts */}
+        <div className="desktop-secondary-grid">
+          <TacoIndexChart />
+          <RealYieldChart />
+          <IakRecommendationChart />
+        </div>
+
+        {/* Footer Controls Dashboard */}
+        <div className="glass-panel mobile-footer" style={{ marginTop: '16px', padding: '10px 16px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', background: 'var(--bg-surface-glass)' }}>
+          {/* Quick Stats */}
+          <div className="mobile-stats-row" style={{ display: 'flex', gap: '24px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+            <div>
+              Traded Shares: <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{totalTradedVolShares.toLocaleString()}</strong>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              Breadth: 
+              <span style={{ color: 'var(--color-gain-bright)', fontWeight: 700 }}>{stocksUp} ▲</span>
+              <span style={{ color: 'var(--color-loss-bright)', fontWeight: 700 }}>{stocksDown} ▼</span>
+            </div>
+            <div>
+              Active Markets: <strong style={{ color: 'var(--text-primary)' }}>{activeExchangesCount} / {exchanges.length}</strong>
+            </div>
+          </div>
+        </div>
       </main>
 
       {/* Stock detail Modal Overlay */}
@@ -449,6 +479,11 @@ export default function Home() {
           onClose={() => setSelectedStock(null)} 
         />
       )}
+
+      {/* Sticky Bottom Anchor Ad for Mobile */}
+      <div className="sticky-bottom-ad">
+        <AdBanner format="anchor" />
+      </div>
 
 
     </div>
