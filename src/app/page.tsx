@@ -201,6 +201,11 @@ export default function Home() {
   return (
     <div className="mobile-page-root" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       
+      {/* Global Advertisement Section */}
+      <div style={{ margin: '10px 10px 0 10px' }}>
+        <AdBanner />
+      </div>
+      
       {/* Top Header Navigation */}
       <header 
         className="glass-panel mobile-header" 
@@ -445,8 +450,6 @@ export default function Home() {
         />
       )}
 
-      {/* Global Advertisement Section */}
-      <AdBanner />
 
     </div>
   );
