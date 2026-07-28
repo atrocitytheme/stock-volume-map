@@ -24,6 +24,7 @@ import RiskAppetiteChart from '../components/RiskAppetiteChart';
 import TacoIndexChart from '../components/TacoIndexChart';
 import RealYieldChart from '../components/RealYieldChart';
 import IakRecommendationChart from '../components/IakRecommendationChart';
+import MarketLeverageChart from '../components/MarketLeverageChart';
 import AdBanner from '../components/AdBanner';
 import { Layers, Globe, Info, Sun, Moon } from 'lucide-react';
 
@@ -449,6 +450,7 @@ export default function Home() {
         <div className="desktop-secondary-grid">
           <TacoIndexChart />
           <RealYieldChart />
+          <MarketLeverageChart />
           <IakRecommendationChart />
         </div>
 
