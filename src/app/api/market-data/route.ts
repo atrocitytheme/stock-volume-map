@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { Stock, DEFAULT_SYMBOLS } from '@/utils/marketDataSim';
 import { fetchInitialStocksStaggered } from '@/utils/finnhubService';
 

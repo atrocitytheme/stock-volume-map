@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 async function fetchYahooDaily(symbol: string, days: number): Promise<{ dates: string[]; closes: number[] }> {
   const now = Math.floor(Date.now() / 1000);
   const period1 = now - (days + 60) * 86400;
