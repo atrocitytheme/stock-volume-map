@@ -423,4 +423,52 @@ body {
     height: auto !important;
     flex: none !important;
   }
+
+  .real-yield-body {
+    flex-direction: column !important;
+  }
+
+  .real-yield-sidebar {
+    width: 100% !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .real-yield-sidebar > div {
+    flex: 1 1 45% !important;
+    min-width: 140px !important;
+  }
+
+  .real-yield-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .iak-recommendation-body {
+    flex-direction: column !important;
+  }
+
+  .iak-recommendation-sidebar {
+    width: 100% !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .iak-recommendation-sidebar > div {
+    flex: 1 1 45% !important;
+    min-width: 140px !important;
+  }
+
+  .iak-recommendation-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+}
+
+/* TradingView link card hover */
+.trading-volume-link:hover {
+  border-color: var(--color-volume) !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.15) !important;
 }

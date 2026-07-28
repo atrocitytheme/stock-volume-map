@@ -19,9 +19,11 @@ import {
 import StockTreemap from '@/components/StockTreemap';
 import GlobalVolumeMap from '@/components/GlobalVolumeMap';
 import StockDetailsModal from '@/components/StockDetailsModal';
-import MarketVolumeChart from '../components/MarketVolumeChart';
+import TradingVolumeLinkCard from '../components/TradingVolumeLinkCard';
 import RiskAppetiteChart from '../components/RiskAppetiteChart';
 import TacoIndexChart from '../components/TacoIndexChart';
+import RealYieldChart from '../components/RealYieldChart';
+import IakRecommendationChart from '../components/IakRecommendationChart';
 import AdBanner from '../components/AdBanner';
 import { Layers, Globe, Info, Sun, Moon } from 'lucide-react';
 
@@ -392,14 +394,20 @@ export default function Home() {
                 <GlobalVolumeMap exchanges={exchanges} stocks={stocks} />
               )}
             </div>
-            <div className="mobile-chart-container" style={{ flexShrink: 0, minHeight: '150px' }}>
-              <MarketVolumeChart isDataFlashing={isDataFlashing} />
+            <div style={{ flexShrink: 0 }}>
+              <TradingVolumeLinkCard isDataFlashing={isDataFlashing} />
             </div>
             <div className="mobile-risk-container" style={{ flexShrink: 0, minHeight: '360px' }}>
               <RiskAppetiteChart />
             </div>
             <div className="mobile-taco-container" style={{ flexShrink: 0, minHeight: '360px' }}>
               <TacoIndexChart />
+            </div>
+            <div className="mobile-realyield-container" style={{ flexShrink: 0, minHeight: '360px' }}>
+              <RealYieldChart />
+            </div>
+            <div style={{ flexShrink: 0, minHeight: '360px' }}>
+              <IakRecommendationChart />
             </div>
           </div>
 
