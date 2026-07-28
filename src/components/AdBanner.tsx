@@ -12,20 +12,37 @@ export default function AdBanner({ format = 'horizontal' }: { format?: AdFormat 
     if (!adRef.current || pushedRef.current) return;
 
     // Use IntersectionObserver to wait until the ad is actually visible and painted on the screen.
-    // This perfectly prevents the "availableWidth=0" error caused by CSS media queries hiding the ad.
+    // This prevents the "availableWidth=0" error caused by CSS media queries hiding the ad
+    // or the slot not being laid out yet during route transitions.
     const observer = new IntersectionObserver((entries) => {
       const [entry] = entries;
       
       // When the ad slot comes into view and has a real width, push the ad
       if (entry.isIntersecting && entry.boundingClientRect.width > 0 && !pushedRef.current) {
         pushedRef.current = true;
-        try {
-          // @ts-ignore
-          (window.adsbygoogle = window.adsbygoogle || []).push({});
-        } catch (err) {
-          console.error('AdSense push error:', err);
-        }
         observer.disconnect();
+
+        // Defer push() until after the browser has fully committed layout.
+        // IntersectionObserver can fire before paint is complete (e.g. during
+        // Next.js route transitions), so we wait for rAF + a small delay.
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            // Final safety check: if the element or its parent was hidden 
+            // in the meantime (e.g. responsive breakpoint change), bail out.
+            const parent = adRef.current?.parentElement;
+            if (!adRef.current || adRef.current.offsetWidth === 0 || !parent || parent.offsetWidth === 0) {
+              pushedRef.current = false; // allow retry on next intersection
+              return;
+            }
+            try {
+              // @ts-ignore
+              (window.adsbygoogle = window.adsbygoogle || []).push({});
+            } catch (err) {
+              // Use warn instead of error to prevent Next.js dev overlay from popping up
+              console.warn('AdSense push warning:', err);
+            }
+          }, 100);
+        });
       }
     }, { 
       // Trigger as soon as 10% of the ad slot is visible

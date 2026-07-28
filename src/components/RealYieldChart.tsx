@@ -19,9 +19,12 @@ interface RealYieldDataPoint {
   date: string;
   usRealYield: number;
   caRealYield: number;
+  us2YRealYield: number;
   usNominal: number;
+  us2YNominal: number;
   caNominal: number;
   usBreakeven: number;
+  us2YBreakeven: number;
   caBreakeven: number;
 }
 
@@ -30,9 +33,12 @@ interface RealYieldResponse {
   current: {
     usRealYield: number;
     caRealYield: number;
+    us2YRealYield: number;
     usNominal: number;
+    us2YNominal: number;
     caNominal: number;
     usBreakeven: number;
+    us2YBreakeven: number;
     caBreakeven: number;
     spread: number;
   };
@@ -44,8 +50,10 @@ type Timeframe = '30d' | '60d' | '90d';
 // ─── Color constants ─────────────────────────────────────────────────
 const US_COLOR = '#3b82f6';      // Blue
 const CA_COLOR = '#f59e0b';      // Amber
+const US_2Y_COLOR = '#06b6d4';   // Cyan / Teal
 const US_GLOW = 'rgba(59, 130, 246, 0.3)';
 const CA_GLOW = 'rgba(245, 158, 11, 0.3)';
+const US_2Y_GLOW = 'rgba(6, 182, 212, 0.3)';
 const POSITIVE_COLOR = '#10b981'; // Green — positive real yield
 const NEGATIVE_COLOR = '#ef4444'; // Red — negative real yield
 
@@ -110,6 +118,29 @@ function RealYieldTooltip({
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-muted)' }}>
           <span>Nominal: {dp.usNominal.toFixed(2)}%</span>
           <span>BE: {dp.usBreakeven.toFixed(2)}%</span>
+        </div>
+      </div>
+
+      {/* US 2Y Section */}
+      <div style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: US_2Y_COLOR, display: 'inline-block' }} />
+          <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-primary)' }}>US 2Y</span>
+          <span
+            style={{
+              fontSize: '14px',
+              fontWeight: 900,
+              fontFamily: 'monospace',
+              color: getYieldColor(dp.us2YRealYield),
+              marginLeft: 'auto',
+            }}
+          >
+            {formatYield(dp.us2YRealYield)}
+          </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-muted)' }}>
+          <span>Nominal: {dp.us2YNominal.toFixed(2)}%</span>
+          <span>BE: {dp.us2YBreakeven.toFixed(2)}%</span>
         </div>
       </div>
 
@@ -241,6 +272,10 @@ function ChartLegend() {
         US 10Y Real Yield
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+        <span style={{ width: '12px', height: '3px', borderRadius: '2px', background: US_2Y_COLOR, display: 'inline-block' }} />
+        US 2Y Real Yield
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px', fontWeight: 700, color: 'var(--text-secondary)' }}>
         <span style={{ width: '12px', height: '3px', borderRadius: '2px', background: CA_COLOR, display: 'inline-block' }} />
         CA 10Y Real Yield (est.)
       </div>
@@ -294,8 +329,8 @@ export default function RealYieldChart() {
     let min = Infinity;
     let max = -Infinity;
     for (const dp of filteredData) {
-      min = Math.min(min, dp.usRealYield, dp.caRealYield);
-      max = Math.max(max, dp.usRealYield, dp.caRealYield);
+      min = Math.min(min, dp.usRealYield, dp.caRealYield, dp.us2YRealYield);
+      max = Math.max(max, dp.usRealYield, dp.caRealYield, dp.us2YRealYield);
     }
     // Add padding and round to nearest 0.5
     min = Math.floor((min - 0.3) * 2) / 2;
@@ -306,11 +341,13 @@ export default function RealYieldChart() {
   // Current values
   const currentUS = data?.current?.usRealYield ?? 0;
   const currentCA = data?.current?.caRealYield ?? 0;
+  const currentUS2Y = data?.current?.us2YRealYield ?? 0;
   const currentSpread = data?.current?.spread ?? 0;
 
   // Gradient IDs (unique to avoid conflicts with other charts)
   const usGradientId = 'realYieldUSGradient';
   const caGradientId = 'realYieldCAGradient';
+  const us2YGradientId = 'realYieldUS2YGradient';
 
   // ─── Loading state ─────────────────────────────────────────────────
   if (loading) {
@@ -516,6 +553,49 @@ export default function RealYieldChart() {
               </span>
             </div>
           </div>
+
+          {/* US 2Y Real Yield badge */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: `${US_2Y_COLOR}12`,
+              border: `1px solid ${US_2Y_COLOR}40`,
+              borderRadius: '10px',
+              padding: '6px 14px',
+              boxShadow: `0 0 20px ${US_2Y_GLOW}`,
+              transition: 'all 0.6s ease',
+            }}
+          >
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: US_2Y_COLOR,
+                boxShadow: `0 0 10px ${US_2Y_COLOR}`,
+                display: 'inline-block',
+                animation: 'pulse-dot 2s ease-in-out infinite',
+              }}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '8px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.5px' }}>
+                🇺🇸 US 2Y
+              </span>
+              <span
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 900,
+                  fontFamily: 'monospace',
+                  color: getYieldColor(currentUS2Y),
+                  letterSpacing: '-0.5px',
+                }}
+              >
+                {formatYield(currentUS2Y)}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Controls: Timeframe + Refresh */}
@@ -588,6 +668,11 @@ export default function RealYieldChart() {
                   <stop offset="0%" stopColor={CA_COLOR} stopOpacity={0.25} />
                   <stop offset="50%" stopColor={CA_COLOR} stopOpacity={0.06} />
                   <stop offset="100%" stopColor={CA_COLOR} stopOpacity={0.01} />
+                </linearGradient>
+                <linearGradient id={us2YGradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={US_2Y_COLOR} stopOpacity={0.25} />
+                  <stop offset="50%" stopColor={US_2Y_COLOR} stopOpacity={0.06} />
+                  <stop offset="100%" stopColor={US_2Y_COLOR} stopOpacity={0.01} />
                 </linearGradient>
               </defs>
 
@@ -676,6 +761,27 @@ export default function RealYieldChart() {
                 name="CA 10Y"
                 strokeDasharray="6 3"
               />
+
+              {/* US 2Y Real Yield Area */}
+              <Area
+                type="monotone"
+                dataKey="us2YRealYield"
+                stroke={US_2Y_COLOR}
+                strokeWidth={2}
+                fillOpacity={1}
+                fill={`url(#${us2YGradientId})`}
+                animationDuration={1500}
+                animationEasing="ease-out"
+                dot={false}
+                activeDot={{
+                  r: 5,
+                  stroke: US_2Y_COLOR,
+                  strokeWidth: 2,
+                  fill: 'var(--bg-surface)',
+                }}
+                name="US 2Y"
+                strokeDasharray="4 2"
+              />
             </AreaChart>
           </ResponsiveContainer>
 
@@ -717,6 +823,16 @@ export default function RealYieldChart() {
                 breakeven={data.current.usBreakeven}
                 real={data.current.usRealYield}
                 accentColor={US_COLOR}
+              />
+
+              <div style={{ height: '1px', background: 'var(--border-color)', margin: '2px 0' }} />
+
+              <YieldBar
+                label="🇺🇸 US 2Y"
+                nominal={data.current.us2YNominal}
+                breakeven={data.current.us2YBreakeven}
+                real={data.current.us2YRealYield}
+                accentColor={US_2Y_COLOR}
               />
 
               <div style={{ height: '1px', background: 'var(--border-color)', margin: '2px 0' }} />
@@ -844,7 +960,7 @@ export default function RealYieldChart() {
               >
                 Real = Nominal − Breakeven
                 <br />
-                BE est. via gold momentum
+                TIPS-implied via FRED
                 <br />
                 <span style={{ color: 'var(--text-muted)', opacity: 0.7 }}>CA yields are approximated</span>
               </div>
