@@ -46,7 +46,7 @@ export default function Home() {
   const getCompactList = () => {
     const categories: Record<string, { totalVol: number, totalReturnVol: number }> = {};
     stocks.forEach(s => {
-      const cat = s.category || 'Other';
+      const cat = s.sector || 'Other';
       if (!categories[cat]) categories[cat] = { totalVol: 0, totalReturnVol: 0 };
       categories[cat].totalVol += s.volume;
       categories[cat].totalReturnVol += s.volume * (s.priceChangePercent / 100);
