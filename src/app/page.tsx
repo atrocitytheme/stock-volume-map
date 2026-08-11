@@ -25,6 +25,7 @@ import TacoIndexChart from '../components/TacoIndexChart';
 import RealYieldChart from '../components/RealYieldChart';
 import IakRecommendationChart from '../components/IakRecommendationChart';
 import MarketLeverageChart from '../components/MarketLeverageChart';
+import CapeIndexChart from '../components/CapeIndexChart';
 import AdBanner from '../components/AdBanner';
 import { Layers, Globe, Info, Sun, Moon } from 'lucide-react';
 
@@ -452,6 +453,7 @@ export default function Home() {
           <RealYieldChart />
           <MarketLeverageChart />
           <IakRecommendationChart />
+          <CapeIndexChart />
         </div>
 
         {/* Footer Controls Dashboard */}
