@@ -28,6 +28,7 @@ import MarketLeverageChart from '../components/MarketLeverageChart';
 import CapeIndexChart from '../components/CapeIndexChart';
 import AdBanner from '../components/AdBanner';
 import { Layers, Globe, Info, Sun, Moon } from 'lucide-react';
+import Script from 'next/script';
 
 interface IndexTicker {
   name: string;
@@ -221,7 +222,12 @@ export default function Home() {
 
   return (
     <div className="mobile-page-root" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      
+      <Script 
+        id="adsbygoogle-init"
+        strategy="afterInteractive"
+        crossOrigin="anonymous"
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3962513051446394"
+      />
 
       {/* Top Header Navigation */}
       <header 

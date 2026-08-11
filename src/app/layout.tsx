@@ -41,13 +41,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <head>
-        <script 
-          async 
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3962513051446394"
-          crossOrigin="anonymous"
-        ></script>
-      </head>
       <body>
         {children}
         <Analytics />
