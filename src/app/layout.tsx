@@ -34,6 +34,36 @@ export const metadata: Metadata = {
   robots: "index, follow",
 };
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "name": "AeroTrade",
+      "url": "https://aerotrade.app",
+      "description": "Real-time market macro indexes tracker and risk appetite dashboard. Monitor S&P 500, NASDAQ, DOW, FTSE, and NIKKEI indexes alongside proprietary macro indicators.",
+      "publisher": {
+        "@type": "Organization",
+        "name": "AeroTrade",
+        "url": "https://aerotrade.app",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://aerotrade.app/favicon.ico"
+        }
+      }
+    },
+    {
+      "@type": "WebPage",
+      "name": "AeroTrade — Market Macro Indexes Tracker & Risk Appetite Dashboard",
+      "description": "Track market macro indexes, risk appetite, and global exchange activity in real time. Interactive heatmaps, CAPE ratio, TACO index, real yield curves, and more.",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "AeroTrade"
+      }
+    }
+  ]
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -42,6 +72,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
+        <Script
+          id="json-ld"
+          type="application/ld+json"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         {children}
         <Analytics />
         <SpeedInsights />

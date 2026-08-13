@@ -423,8 +423,8 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-                {/* Mobile In-Feed Ad Placed Below Compact List */}
-                <AdBanner format="rectangle" />
+                {/* Mobile In-Feed Ad Placed Below Compact List — only render after content loads */}
+                {!loadingQuotes && <AdBanner format="rectangle" />}
               </div>
 
               {/* DETAILED VIEW (Always visible on desktop via CSS) */}
@@ -436,8 +436,8 @@ export default function Home() {
                     <GlobalVolumeMap exchanges={exchanges} stocks={stocks} />
                   )}
                 </div>
-                {/* Desktop Ad Below Treemap (Also visible on mobile detailed mode) */}
-                <AdBanner format="horizontal" />
+                {/* Desktop Ad Below Treemap — only render after content loads */}
+                {!loadingQuotes && <AdBanner format="horizontal" />}
               </div>
 
             </div>
@@ -447,9 +447,6 @@ export default function Home() {
           <div className="desktop-right-pane">
             <TradingVolumeLinkCard isDataFlashing={isDataFlashing} />
             <RiskAppetiteChart />
-            <div className="desktop-only-ad" style={{ marginTop: 'auto' }}>
-              <AdBanner format="rectangle" />
-            </div>
           </div>
         </div>
 
@@ -479,7 +476,150 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* === EDUCATIONAL CONTENT SECTIONS === */}
+        {/* These sections provide substantial crawlable text for Google's AdSense and search crawlers */}
+
+        {/* Section: Understanding the Dashboard */}
+        <section style={{ marginTop: '32px', padding: '32px 24px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+          <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px', letterSpacing: '-0.5px' }}>
+            Understanding the AeroTrade Macro Dashboard
+          </h2>
+          <p style={{ fontSize: '14px', lineHeight: '1.8', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+            AeroTrade provides a real-time overview of global financial markets through a suite of institutional-grade macro indicators. The dashboard tracks major market indexes including the S&amp;P 500, NASDAQ 100, Dow Jones Industrial Average, FTSE 100, and Nikkei 225, alongside proprietary composite indicators that measure market sentiment, risk appetite, credit conditions, and valuation metrics.
+          </p>
+          <p style={{ fontSize: '14px', lineHeight: '1.8', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+            The interactive treemap heatmap displays individual stock performance weighted by trading volume, allowing you to quickly identify which sectors and securities are driving market movements. Green tiles indicate positive price changes while red tiles indicate declines, with the size of each tile reflecting relative trading volume. Click any tile to view detailed stock information including price history, volume trends, and key financial metrics.
+          </p>
+          <p style={{ fontSize: '14px', lineHeight: '1.8', color: 'var(--text-secondary)', marginBottom: '24px' }}>
+            The Global Exchanges view maps trading activity across major stock exchanges worldwide, including the NYSE, NASDAQ, London Stock Exchange, Tokyo Stock Exchange, Hong Kong Exchange, and more. Exchange markers pulse in real time to indicate active trading sessions, providing an at-a-glance view of which global markets are currently open and their relative trading volumes.
+          </p>
+
+          <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
+            Macro Indicators Explained
+          </h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ padding: '16px', background: 'var(--bg-surface-glass)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-accent)', marginBottom: '8px' }}>Risk Appetite Index</h4>
+              <p style={{ fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)' }}>
+                Based on methodologies similar to the Goldman Sachs Risk Appetite Indicator, this composite index measures the willingness of investors to take on risk. A reading above zero indicates risk-on sentiment (investors favoring equities, high-yield bonds, and emerging markets), while readings below zero signal risk-off behavior (flight to safe havens like treasuries and gold). The index aggregates signals from credit spreads, equity volatility, commodity prices, and cross-asset correlations.
+              </p>
+            </div>
+
+            <div style={{ padding: '16px', background: 'var(--bg-surface-glass)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-accent)', marginBottom: '8px' }}>TACO Index (Treasury-Adjusted Credit Overlay)</h4>
+              <p style={{ fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)' }}>
+                The TACO Index is a composite measure that overlays credit market conditions onto treasury yield dynamics. It captures the spread between investment-grade corporate bond yields and risk-free treasury rates, adjusted for inflation expectations. Rising TACO values suggest tightening credit conditions and potential stress in the corporate bond market, while declining values indicate easing financial conditions and increased credit availability.
+              </p>
+            </div>
+
+            <div style={{ padding: '16px', background: 'var(--bg-surface-glass)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-accent)', marginBottom: '8px' }}>CAPE Ratio (Cyclically Adjusted Price-to-Earnings)</h4>
+              <p style={{ fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)' }}>
+                Developed by Nobel laureate Robert Shiller, the CAPE ratio (also known as the Shiller P/E) smooths out earnings volatility by dividing the current price of a stock index by the average of ten years of inflation-adjusted earnings. A high CAPE suggests that equities are expensive relative to historical earnings, while a low CAPE may indicate undervaluation. The long-term average CAPE for the S&amp;P 500 is approximately 17, and readings significantly above this level have historically preceded periods of lower future returns.
+              </p>
+            </div>
+
+            <div style={{ padding: '16px', background: 'var(--bg-surface-glass)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-accent)', marginBottom: '8px' }}>Real Yield Tracker</h4>
+              <p style={{ fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)' }}>
+                Real yields represent the return on bonds after accounting for inflation. They are calculated by subtracting the expected inflation rate (typically derived from TIPS breakeven rates) from the nominal treasury yield. Positive real yields mean bondholders earn a return above inflation, while negative real yields erode purchasing power. Real yields are a critical input for equity valuations, currency dynamics, and the relative attractiveness of different asset classes.
+              </p>
+            </div>
+
+            <div style={{ padding: '16px', background: 'var(--bg-surface-glass)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-accent)', marginBottom: '8px' }}>Market Leverage Indicators</h4>
+              <p style={{ fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)' }}>
+                Market leverage metrics track the degree to which investors are using borrowed capital to amplify their market positions. This includes margin debt levels, leveraged ETF flows, and options market leverage ratios. High leverage levels can amplify both gains and losses, and historically elevated margin debt has been associated with increased market fragility and larger drawdowns during corrections.
+              </p>
+            </div>
+
+            <div style={{ padding: '16px', background: 'var(--bg-surface-glass)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-accent)', marginBottom: '8px' }}>IAK Recommendation Index</h4>
+              <p style={{ fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)' }}>
+                The IAK (Institutional Analyst Konsensus) Recommendation Index aggregates analyst recommendations across major investment banks and research firms. It tracks the distribution of buy, hold, and sell ratings for market sectors, providing a consensus view of institutional sentiment. Shifts in the IAK can signal changes in institutional positioning and are often leading indicators of sector rotation.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Section: Market Glossary */}
+        <section style={{ marginTop: '24px', padding: '32px 24px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+          <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px', letterSpacing: '-0.5px' }}>
+            Market Glossary
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+            {[
+              { term: 'Market Breadth', definition: 'A measure of how many stocks are advancing versus declining. Strong breadth (more advancers) confirms a healthy rally, while weak breadth during a rising market signals potential divergence.' },
+              { term: 'Trading Volume', definition: 'The total number of shares or contracts traded during a given period. High volume confirms the strength of a price move, while low volume may indicate lack of conviction.' },
+              { term: 'Risk-On / Risk-Off', definition: 'Market regimes where investors either seek higher-risk assets (risk-on) like equities and commodities, or flee to safe havens (risk-off) like treasuries, gold, and the US dollar.' },
+              { term: 'Credit Spread', definition: 'The difference in yield between a corporate bond and a risk-free government bond of the same maturity. Widening spreads indicate growing credit risk and often precede economic slowdowns.' },
+              { term: 'Sector Rotation', definition: 'The movement of investment capital from one industry sector to another as investors anticipate the next phase of the economic cycle. Defensive sectors outperform in late-cycle, while cyclicals lead in early-cycle.' },
+              { term: 'Margin Debt', definition: 'Money borrowed from brokerages to purchase securities. Rising margin debt indicates increasing leverage and bullish sentiment, but extreme levels historically correlate with market tops.' },
+              { term: 'Breakeven Inflation Rate', definition: 'The difference between nominal treasury yields and TIPS (Treasury Inflation-Protected Securities) yields, representing the market\'s expectation for average inflation over the bond\'s maturity.' },
+              { term: 'Volatility Index (VIX)', definition: 'Often called the "fear gauge," the VIX measures expected 30-day volatility of the S&P 500 derived from options prices. Readings above 30 indicate high fear, while readings below 15 suggest complacency.' },
+            ].map((item, idx) => (
+              <div key={idx} style={{ padding: '14px', background: 'var(--bg-surface-glass)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                <strong style={{ fontSize: '13px', color: 'var(--text-primary)', display: 'block', marginBottom: '6px' }}>{item.term}</strong>
+                <p style={{ fontSize: '12px', lineHeight: '1.7', color: 'var(--text-secondary)', margin: 0 }}>{item.definition}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Section: FAQ */}
+        <section style={{ marginTop: '24px', padding: '32px 24px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+          <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '16px', letterSpacing: '-0.5px' }}>
+            Frequently Asked Questions
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {[
+              { q: 'What data sources does AeroTrade use?', a: 'AeroTrade aggregates real-time market data from the Finnhub financial data API, which sources information from major stock exchanges worldwide. Price quotes, volume data, and index values are updated every few seconds during market hours. Our macro indicators are calculated using established financial methodologies applied to this live data.' },
+              { q: 'Is the data delayed or real-time?', a: 'Market data is sourced via the Finnhub API and is generally near-real-time during active trading sessions. Some data points may have a slight delay depending on exchange rules and data licensing. The dashboard polls for updates every 5 seconds to provide the most current view available.' },
+              { q: 'How are the macro indexes calculated?', a: 'Each macro index follows established financial methodologies. The Risk Appetite Index uses a multi-factor model similar to Goldman Sachs\' approach, combining credit spreads, volatility, and cross-asset signals. The CAPE ratio uses Professor Robert Shiller\'s cyclically adjusted P/E methodology. The TACO Index is a proprietary composite overlaying credit conditions onto treasury dynamics. All calculations are updated in real time as new data flows in.' },
+              { q: 'Can I use AeroTrade for trading decisions?', a: 'AeroTrade is designed as an informational and educational tool for monitoring macro market conditions. It is NOT financial advice and should not be used as the sole basis for investment decisions. Always conduct your own research and consult with a licensed financial advisor before making investment decisions. See our full Disclaimer for more information.' },
+              { q: 'Which market indexes are tracked?', a: 'AeroTrade tracks five major global market indexes: the S&P 500 (via SPY ETF), NASDAQ 100 (via QQQ ETF), Dow Jones Industrial Average (via DIA ETF), FTSE 100 (via EWU ETF), and Nikkei 225 (via EWJ ETF). Individual stock tracking covers a broad universe of large-cap US equities across all major sectors.' },
+              { q: 'What does the treemap heatmap show?', a: 'The treemap heatmap visualizes individual stock performance where tile size represents relative trading volume and color represents price change direction and magnitude. Green tiles indicate stocks with positive price changes, red tiles show declines, and the intensity of color reflects the magnitude of the move. This allows you to instantly spot which sectors and stocks are leading or lagging the market.' },
+            ].map((item, idx) => (
+              <div key={idx} style={{ padding: '16px', background: 'var(--bg-surface-glass)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>{item.q}</h3>
+                <p style={{ fontSize: '13px', lineHeight: '1.7', color: 'var(--text-secondary)', margin: 0 }}>{item.a}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
       </main>
+
+      {/* === SITE NAVIGATION FOOTER === */}
+      <footer style={{ 
+        marginTop: '32px', 
+        padding: '32px 24px', 
+        background: 'var(--bg-surface)', 
+        borderTop: '1px solid var(--border-color)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-volume) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '13px', color: 'var(--color-bg-deep)' }}>A</div>
+          <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>AeroTrade</span>
+        </div>
+        <nav style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '24px', fontSize: '13px' }}>
+          <a href="/" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Home</a>
+          <a href="/about" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>About</a>
+          <a href="/privacy" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Privacy Policy</a>
+          <a href="/terms" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Terms of Service</a>
+          <a href="/disclaimer" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Disclaimer</a>
+          <a href="/contact" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 }}>Contact</a>
+        </nav>
+        <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', maxWidth: '600px', lineHeight: '1.6' }}>
+          <p style={{ marginBottom: '8px' }}>AeroTrade is an informational platform for tracking macro market indicators. All data is sourced from public APIs and is provided for educational purposes only. This site does not provide financial advice.</p>
+          <p>© {new Date().getFullYear()} AeroTrade. All rights reserved.</p>
+        </div>
+      </footer>
 
       {/* Stock detail Modal Overlay */}
       {selectedStock && (
@@ -489,11 +629,6 @@ export default function Home() {
           onClose={() => setSelectedStock(null)} 
         />
       )}
-
-      {/* Sticky Bottom Anchor Ad for Mobile */}
-      <div className="sticky-bottom-ad">
-        <AdBanner format="anchor" />
-      </div>
 
 
     </div>
