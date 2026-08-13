@@ -160,7 +160,7 @@ export default function DisclaimerPage() {
               If you have any questions, concerns, or require further clarification regarding this Financial Disclaimer or our data practices, please contact us at:
             </p>
             <p style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 600, marginTop: '16px' }}>
-              Email: <a href="mailto:contact@aerotrade.app" style={{ color: 'var(--color-accent)', textDecoration: 'none' }}>contact@aerotrade.app</a>
+              Email: <a href="mailto:jcx36283@proton.me" style={{ color: 'var(--color-accent)', textDecoration: 'none' }}>jcx36283@proton.me</a>
             </p>
           </section>
         </div>

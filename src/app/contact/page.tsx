@@ -45,7 +45,7 @@ export default function ContactPage() {
             <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>
               For all general inquiries, partnership opportunities, or direct support, please email us at:
             </p>
-            <a href="mailto:contact@aerotrade.app" style={{ 
+            <a href="mailto:jcx36283@proton.me" style={{ 
               display: 'inline-block', 
               padding: '12px 24px', 
               backgroundColor: 'var(--color-accent)', 
@@ -55,7 +55,7 @@ export default function ContactPage() {
               fontWeight: 600,
               fontSize: '15px'
             }}>
-              contact@aerotrade.app
+              jcx36283@proton.me
             </a>
           </div>
 
@@ -76,7 +76,7 @@ export default function ContactPage() {
 
         <section className="glass-panel" style={{ padding: '32px', marginBottom: '48px' }}>
           <h2 style={{ fontSize: '24px', marginBottom: '24px', color: 'var(--text-primary)' }}>Send us a Message</h2>
-          <form style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} action="mailto:contact@aerotrade.app" method="POST" encType="text/plain">
+          <form style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} action="mailto:jcx36283@proton.me" method="POST" encType="text/plain">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label htmlFor="name" style={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 600 }}>Name</label>
               <input type="text" id="name" name="name" required style={{ 

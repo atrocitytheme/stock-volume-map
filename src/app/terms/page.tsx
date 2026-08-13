@@ -95,7 +95,7 @@ export default function TermsOfService() {
             <section>
               <h2 style={{ fontSize: "1.25rem", color: "var(--text-primary)", marginBottom: "12px", fontWeight: "600" }}>10. Contact Information</h2>
               <p>If you have any questions about these Terms, please contact us at:</p>
-              <p style={{ marginTop: "8px", fontWeight: "bold", color: "var(--text-primary)" }}>contact@aerotrade.app</p>
+              <p style={{ marginTop: "8px", fontWeight: "bold", color: "var(--text-primary)" }}>jcx36283@proton.me</p>
             </section>
 
           </div>
