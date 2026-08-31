@@ -78,8 +78,8 @@ async function calculateBusinessInvestment(): Promise<BusinessInvestmentResponse
   const startDate = '2000-01-01';
 
   const [caGFCFData, usGFCFData, caEmpData] = await Promise.all([
-    fetchFredSeries('NAEXKP04CAQ189S', startDate), // Canada GFCF index
-    fetchFredSeries('NAEXKP04USQ189S', startDate), // US GFCF index
+    fetchFredSeries('NAEXKP04CAQ661S', startDate), // Canada GFCF index (2015=100)
+    fetchFredSeries('NAEXKP04USQ661S', startDate), // US GFCF index (2015=100)
     fetchFredSeries('LFEMTTTTCAQ647S', startDate), // Canada total employed
   ]);
 
