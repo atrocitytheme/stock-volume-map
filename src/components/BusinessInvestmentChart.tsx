@@ -926,7 +926,7 @@ export default function BusinessInvestmentChart() {
                 marginTop: 'auto',
               }}
             >
-              Source: FRED (GPDIC1, NFIRSAXDCCAQ)
+              Source: StatCan & FRED
               <br />
               Real Investment Index (Base=100)
               <br />

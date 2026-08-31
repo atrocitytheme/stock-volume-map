@@ -72,15 +72,68 @@ async function fetchFredSeries(
   return { dates, values };
 }
 
+// ─── StatCan Fetcher ───────────────────────────────────────────────
+async function fetchStatCanSeries(
+  productId: number,
+  coordinate: string,
+  latestN: number,
+  isMonthly: boolean
+): Promise<{ dates: string[]; values: number[] }> {
+  // StatCan pads coordinates to 10 dimensions
+  const paddedCoord = (coordinate + '.0.0.0.0.0.0.0.0.0.0').split('.').slice(0, 10).join('.');
+  
+  const res = await fetch('https://www150.statcan.gc.ca/t1/wds/rest/getDataFromCubePidCoordAndLatestNPeriods', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify([{ productId, coordinate: paddedCoord, latestN }]),
+    next: { revalidate: 86400 },
+  });
+
+  if (!res.ok) throw new Error(`StatCan API error: ${res.status}`);
+
+  const json = await res.json();
+  if (json[0]?.status !== 'SUCCESS') throw new Error('StatCan API returned error for vector');
+
+  const dataPoints = json[0].object.vectorDataPoint;
+  const dates: string[] = [];
+  const values: number[] = [];
+
+  if (isMonthly) {
+    const quarters = new Map<string, { sum: number; count: number }>();
+    for (const dp of dataPoints) {
+      const date = new Date(dp.refPer);
+      const qDate = `${date.getFullYear()}-${String(Math.floor(date.getMonth() / 3) * 3 + 1).padStart(2, '0')}-01`;
+      const val = dp.value * Math.pow(10, dp.scalarFactorCode);
+      const current = quarters.get(qDate) || { sum: 0, count: 0 };
+      quarters.set(qDate, { sum: current.sum + val, count: current.count + 1 });
+    }
+    // Only include complete quarters (3 months)
+    for (const [qDate, agg] of quarters.entries()) {
+      if (agg.count === 3) {
+        dates.push(qDate);
+        values.push(agg.sum / 3);
+      }
+    }
+  } else {
+    for (const dp of dataPoints) {
+      dates.push(dp.refPer);
+      values.push(dp.value * Math.pow(10, dp.scalarFactorCode));
+    }
+  }
+
+  return { dates, values };
+}
+
 // ─── Core calculation ────────────────────────────────────────────────
 async function calculateBusinessInvestment(): Promise<BusinessInvestmentResponse> {
   // Fetch from 2005 onwards for a good base 
   const startDate = '2005-01-01';
 
+  // 100 quarters = 25 years (for GDP). 300 months = 25 years (for employment)
   const [caGFCFData, usGFCFData, caEmpData] = await Promise.all([
-    fetchFredSeries('NFIRSAXDCCAQ', startDate), // Canada Real GFCF (Millions CAD)
-    fetchFredSeries('GPDIC1', startDate),       // US Real GPDI (Billions USD)
-    fetchFredSeries('LFEMTTTTCAQ647S', startDate), // Canada total employed
+    fetchStatCanSeries(36100104, '1.1.1.10', 100, false), // Canada Real GFCF (Millions CAD)
+    fetchFredSeries('GPDIC1', startDate),                 // US Real GPDI (Billions USD)
+    fetchStatCanSeries(14100287, '1.3.1.1.1.1', 300, true), // Canada total employed (Monthly -> Quarterly Avg)
   ]);
 
   // Build lookup maps
