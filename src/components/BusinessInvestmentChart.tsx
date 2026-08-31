@@ -104,7 +104,7 @@ function CAGrowthTooltip({
         </span>
       </div>
       <div style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>
-        Index (2015 = 100)
+        Index (Base = 100)
       </div>
     </div>
   );
@@ -627,7 +627,7 @@ export default function BusinessInvestmentChart() {
                   strokeOpacity={0.5}
                   strokeWidth={1.5}
                   label={{
-                    value: '2015 BASE',
+                    value: 'BASE 100',
                     position: 'right',
                     fill: 'var(--text-muted)',
                     fontSize: 8,
@@ -748,7 +748,7 @@ export default function BusinessInvestmentChart() {
                   strokeOpacity={0.5}
                   strokeWidth={1.5}
                   label={{
-                    value: '2015 BASE',
+                    value: 'BASE 100',
                     position: 'right',
                     fill: 'var(--text-muted)',
                     fontSize: 8,
@@ -779,11 +779,11 @@ export default function BusinessInvestmentChart() {
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px', fontWeight: 700, color: 'var(--text-secondary)' }}>
                   <span style={{ width: '12px', height: '3px', borderRadius: '2px', background: US_COLOR, display: 'inline-block' }} />
-                  🇺🇸 US GFCF Index
+                  🇺🇸 US Real GPDI Index
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px', fontWeight: 700, color: 'var(--text-secondary)' }}>
                   <span style={{ width: '12px', height: '3px', borderRadius: '2px', background: CA_COLOR, display: 'inline-block' }} />
-                  🇨🇦 Canada GFCF Index
+                  🇨🇦 Canada Real GFCF Index
                 </div>
               </>
             ) : activeTab === 'perWorker' ? (
@@ -794,7 +794,7 @@ export default function BusinessInvestmentChart() {
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9px', fontWeight: 700, color: 'var(--text-secondary)' }}>
                 <span style={{ width: '12px', height: '3px', borderRadius: '2px', background: CA_COLOR, display: 'inline-block' }} />
-                🇨🇦 Canada GFCF Index (2015 = 100)
+                🇨🇦 Canada Real GFCF Index (Base=100)
               </div>
             )}
           </div>
@@ -926,9 +926,9 @@ export default function BusinessInvestmentChart() {
                 marginTop: 'auto',
               }}
             >
-              Source: OECD via FRED
+              Source: FRED (GPDIC1, NFIRSAXDCCAQ)
               <br />
-              GFCF Index (2015=100)
+              Real Investment Index (Base=100)
               <br />
               Quarterly, Seasonally Adj.
             </div>

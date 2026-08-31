@@ -74,12 +74,12 @@ async function fetchFredSeries(
 
 // ─── Core calculation ────────────────────────────────────────────────
 async function calculateBusinessInvestment(): Promise<BusinessInvestmentResponse> {
-  // Fetch ~25 years of data for flexibility (client filters via timeframe)
-  const startDate = '2000-01-01';
+  // Fetch from 2005 onwards for a good base 
+  const startDate = '2005-01-01';
 
   const [caGFCFData, usGFCFData, caEmpData] = await Promise.all([
-    fetchFredSeries('NAEXKP04CAQ661S', startDate), // Canada GFCF index (2015=100)
-    fetchFredSeries('NAEXKP04USQ661S', startDate), // US GFCF index (2015=100)
+    fetchFredSeries('NFIRSAXDCCAQ', startDate), // Canada Real GFCF (Millions CAD)
+    fetchFredSeries('GPDIC1', startDate),       // US Real GPDI (Billions USD)
     fetchFredSeries('LFEMTTTTCAQ647S', startDate), // Canada total employed
   ]);
 
@@ -109,29 +109,35 @@ async function calculateBusinessInvestment(): Promise<BusinessInvestmentResponse
     );
   }
 
-  // Normalize per-worker: divide GFCF index by employment, then rescale
-  // so the first available quarter = 100 for readability
-  const rawPerWorker = commonDates.map((d) => {
-    const gfcf = caGFCFMap.get(d)!;
-    const emp = caEmpMap.get(d)!;
-    return gfcf / emp;
-  });
-  const basePerWorker = rawPerWorker[0];
+  // Use the first common date (e.g. 2005-01-01) as the base period for indexing (=100)
+  const baseDate = commonDates[0];
+  const baseCaGFCF = caGFCFMap.get(baseDate)!;
+  const baseUsGFCF = usGFCFMap.get(baseDate)!;
+  
+  // Calculate per worker for the base period
+  const baseCaEmp = caEmpMap.get(baseDate)!;
+  const baseCaPerWorker = baseCaGFCF / baseCaEmp;
 
   const dataPoints: BusinessInvestmentDataPoint[] = commonDates.map(
-    (date, i) => {
+    (date) => {
       const caGFCF = caGFCFMap.get(date)!;
       const usGFCF = usGFCFMap.get(date)!;
       const caEmployment = caEmpMap.get(date)!;
-      const perWorkerNormalized = (rawPerWorker[i] / basePerWorker) * 100;
+      
+      // Re-index to base 100
+      const caIndex = (caGFCF / baseCaGFCF) * 100;
+      const usIndex = (usGFCF / baseUsGFCF) * 100;
+      
+      const perWorkerRaw = caGFCF / caEmployment;
+      const perWorkerNormalized = (perWorkerRaw / baseCaPerWorker) * 100;
 
       return {
         date,
-        caGFCF: Number(caGFCF.toFixed(2)),
-        usGFCF: Number(usGFCF.toFixed(2)),
+        caGFCF: Number(caIndex.toFixed(2)),
+        usGFCF: Number(usIndex.toFixed(2)),
         caEmployment: Number(caEmployment.toFixed(0)),
         caGFCFPerWorker: Number(perWorkerNormalized.toFixed(2)),
-        gap: Number((usGFCF - caGFCF).toFixed(2)),
+        gap: Number((usIndex - caIndex).toFixed(2)),
       };
     },
   );
