@@ -26,6 +26,7 @@ import RealYieldChart from '../components/RealYieldChart';
 import IakRecommendationChart from '../components/IakRecommendationChart';
 import MarketLeverageChart from '../components/MarketLeverageChart';
 import CapeIndexChart from '../components/CapeIndexChart';
+import BusinessInvestmentChart from '../components/BusinessInvestmentChart';
 import AdBanner from '../components/AdBanner';
 import { Layers, Globe, Info, Sun, Moon } from 'lucide-react';
 import Script from 'next/script';
@@ -457,6 +458,7 @@ export default function Home() {
           <MarketLeverageChart />
           <IakRecommendationChart />
           <CapeIndexChart />
+          <BusinessInvestmentChart />
         </div>
 
         {/* Footer Controls Dashboard */}
